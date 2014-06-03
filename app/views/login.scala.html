@@ -1,0 +1,37 @@
+@(msg: String)(implicit l:Lang, st:AuthState)
+
+@main("login"){
+  <h1>Account connection</h1>
+
+  @if(msg != "") {
+    <div class="alert alert-danger">
+      @msg
+    </div>
+  }
+
+  <form action="/login" method="POST">
+
+    <div class="form-group">
+      <input type="text" class="form-control"
+             id="accountLogin" name="accountLogin"
+             placeholder="Enter account name" />
+    </div>
+
+    <div class="form-group animals">
+      <label>Password image</label>
+      <div class="row">
+        @Application.animals().map(frag.animal(_))
+      </div>
+    </div>
+
+    <div class="form-group">
+      <button type="submit" class="btn btn-primary btn-lg">Log in</button>
+      <button type="button" class="btn btn-link" onclick="$('#picLost').toggle()">Password image lost ?</button>
+    </div>
+  </form>
+
+  <div class="alert alert-info" id="piclost" style="display: none;">
+    There are only nine choices, try them all !
+  </div>
+
+}

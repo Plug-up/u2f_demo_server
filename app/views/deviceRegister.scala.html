@@ -1,0 +1,41 @@
+@()(implicit l:Lang, st:AuthState)
+
+@main("register"){
+  <h1>U2F device registration</small></h1>
+
+  <div class="row">
+    <div class="col-xs-6">
+      Extension state
+    </div>
+    <div id="extStatus" class="col-xs-6">
+      <div id="ext0" class="alert alert-info">
+        <button onclick="PU.check_extension(true, PU.register_key)"
+                class="btn btn-primary" >Run check</button>
+      </div>
+      <div id="ext1" class="alert alert-info hide">Detecting configuration ...</div>
+      <div id="ext2" class="alert alert-success hide">Extension detected</div>
+      <div id="ext3" class="alert alert-danger hide">Extension not detected ! Please skip this step and return to the device registration page once your environment is complete.</div>
+    </div>
+    <div id="regCol" class="col-xs-6 hide">
+      Device registration
+    </div>
+    <div id="regStatus" class="col-xs-6">
+      <div id="reg1" class="alert alert-info hide">
+        Please plug your U2F device
+      </div>
+      <div id="reg2" class="alert alert-info hide">
+        Please activate your U2F device
+      </div>
+      <div id="reg3" class="alert alert-info hide">
+        Sending data to server ...
+      </div>
+      <div id="reg4" class="alert alert-success hide">
+        U2F device registered !
+      </div>
+    </div>
+  </div>
+  <div class="center">
+    <a id="u2fSuccess" href="/devices" class="btn btn-default btn-lg hide">Manage devices</a>
+    <a id="u2fSkip" href="/devices" class="btn btn-default btn-lg">Cancel (do not register any U2F device)</a>
+  </div>
+}

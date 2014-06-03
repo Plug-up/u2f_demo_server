@@ -1,0 +1,27 @@
+@(login:String, msg:String)(implicit l:Lang, st:AuthState)
+
+@main("register"){
+  <h1>Account registration <small>Account information</small></h1>
+
+  <form action="/register" method="POST">
+
+    <div class="form-group @if(msg != ""){has-error}">
+      <label class="control-label" for="accountLogin">Account login @if(msg != ""){- @msg}</label>
+      <input type="text" class="form-control" value="@login"
+             id="accountLogin" name="accountLogin"
+             placeholder="Enter account name"/>
+    </div>
+
+    <div class="form-group animals">
+      <label>Please select an animal (it will serve as your password)</label>
+      <div class="row">
+        @Application.animals().map(frag.animal(_))
+      </div>
+    </div>
+
+    <div class="form-group">
+      <button type="submit" class="btn btn-primary">Create account</button>
+      <button type="reset" class="btn btn-default">Cancel</button>
+    </div>
+  </form>
+}

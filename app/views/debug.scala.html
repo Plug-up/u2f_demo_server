@@ -1,0 +1,19 @@
+@()(implicit l:Lang)
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>U2F test</title>
+    <link rel="stylesheet" href="/assets/stylesheets/style.css" type="text/css" />
+
+    <script src="/assets/javascripts/jquery-1.10.2.min.js"></script>
+    <script src="/assets/javascripts/script.js"></script>
+  </head> 
+  <body>
+    <div id="content">
+      <button onclick="PU.check_extension()">Check extension</button>
+      <button onclick="PU.register_key()">Register</button>
+    </div>
+  </body>
+</html>

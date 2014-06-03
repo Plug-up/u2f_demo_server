@@ -1,0 +1,12 @@
+@(elt:(String, String), checked:Boolean=false)(implicit l:Lang)
+
+<div class="col-xs-4">
+  <label class="thumbnail">
+    <img src="/assets/images/@(elt._2).jpg" alt="@elt._1" />
+    <span class="caption">
+      <input type="radio" name="animal" value="@elt._2"
+             @if(checked){checked="checked"} />
+      @elt._1
+    </span>
+  </label>
+</div>

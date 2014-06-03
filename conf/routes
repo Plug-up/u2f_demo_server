@@ -1,0 +1,33 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+# Generic routes
+GET    /assets/*file                controllers.Assets.at(path="/public", file)
+
+# Application routes
+GET    /                            controllers.Application.index
+GET    /devices                     controllers.Application.devices
+GET    /delete                      controllers.Application.deleteAccount
+
+# Registration routes
+GET    /register                    controllers.UserCtr.register
+POST   /register                    controllers.UserCtr.createAccount
+GET    /deviceRegister              controllers.U2FCtr.deviceRegister
+GET    /oathRegister                controllers.OATHCtr.register
+
+# Ajax routes
+POST   /ajax/echo                   controllers.Ajax.echo
+POST   /ajax/deleteDevice           controllers.U2FCtr.deleteDevice
+POST   /ajax/genChallenge           controllers.U2FCtr.genChallenge
+POST   /ajax/checkRegister          controllers.U2FCtr.checkRegister
+POST   /ajax/checkSign              controllers.U2FCtr.checkSign
+POST   /ajax/skip2f                 controllers.Application.skip2f
+POST   /ajax/oathConfirm            controllers.OATHCtr.confirm
+POST   /ajax/oathCheck              controllers.OATHCtr.check
+
+# Authentication routes
+GET    /login                       controllers.Application.loginPage
+GET    /loginFailed                 controllers.Application.loginFailed
+POST   /login                       controllers.UserCtr.login
+GET    /logout                      controllers.AuthController.logout

@@ -1,0 +1,76 @@
+@(cur:String)(content:Html)(implicit l:Lang, st:AuthState)
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" /+>
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" />
+
+    <title>FIDO U2F Test server</title>
+
+    <link href="/assets/stylesheets/bootstrap.min.css" rel="stylesheet" />
+    <link href="/assets/stylesheets/style.css" rel="stylesheet" />
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="/">@Messages("title")</a>
+        </div>
+        @st match {
+          case Unlogged() => {
+              <ul class="nav navbar-nav">
+                @List("", "login", "register").map{ m =>
+                  <li @if(cur == m){ class="active" } >
+                    <a href="/@m">@Messages("menu."+m)</a>
+                  </li>
+                }
+              </ul>
+          }
+          case Logged(_, _) => {
+              <ul class="nav navbar-nav">
+                @List("", "devices", "delete").map{ m =>
+                  <li @if(cur == m){ class="active" } >
+                    <a href="/@m">@Messages("menu."+m)</a>
+                  </li>
+                }
+              </ul>
+              <div class="navbar-right">
+                <a href="/logout" class="btn btn-default navbar-btn">
+                  @Messages("logout")
+                </a>
+              </div>
+          }
+        }
+      </div>
+    </div>
+
+    <div class="container">
+      @content
+    </div>
+
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="/assets/javascripts/jquery-1.11.0.min.js"></script>
+    <script src="/assets/javascripts/qrcode.min.js"></script>
+    <script src="/assets/javascripts/u2fCommon.js"></script>
+    <script type="text/javascript">
+      U2F.hashedAppId = '@utils.U2F.hashToHex(gs.HOST())'
+      U2F.appId = '@gs.HOST()'
+    </script>
+    <!-- plugup impl files -->
+    <script src="/assets/javascripts/plugup.ext/q.min.js"></script>
+    <script src="/assets/javascripts/plugup.ext/winusbDevice.js"></script>
+    <script src="/assets/javascripts/plugup.ext/fidoLayer.js"></script>
+    <script src="/assets/javascripts/plugup.ext/impl.js"></script>
+    <!-- gnubbyd impl file -->
+    <script src="/assets/javascripts/gnubbyd.ext/impl.js"></script>
+    <!-- file common to both impls -->
+    <script src="/assets/javascripts/script.js"></script>
+  </body>
+</html>

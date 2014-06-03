@@ -1,0 +1,12 @@
+title      = U2F Test server
+logout     = Log out
+date.short = MM/ss/yyyy
+date.long  = MM/dd/yyyy - HH:mm
+
+
+menu.         = Home
+menu.login    = Log in
+menu.register = Account registration
+menu.devices  = Manage devices
+menu.password = Change password
+menu.delete   = Delete account

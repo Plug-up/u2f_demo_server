@@ -1,0 +1,64 @@
+@(u2f:SecondFactor)(implicit l:Lang, st:AuthState)
+
+@main(""){
+  @u2f match {
+    case No2F() => {
+      <div class="jumbotron center">
+        <h1>No second factor associated with this account</h1>
+        <a href="/deviceRegister">Register a device !</a>
+      </div>
+    }
+    case Skipped() => {
+      <div class="jumbotron center warning">
+        <h1>Second factor authentication skipped</h1>
+      </div>
+    }
+    case U2FSuccess() => {
+      <div class="jumbotron center success">
+        <h1>U2F authentication complete</h1>
+      </div>
+    }
+    case OATHSuccess() => {
+      <div class="jumbotron center success">
+        <h1>OATH authentication complete</h1>
+      </div>
+    }
+    case Pending(oath, u2f, challenges) => {
+      @if(u2f) {
+        <div id="u2fState" class="jumbotron center">
+          <h1>Please plug your U2F device to access your account</h1>
+          <button class="btn btn-primary" onclick="PU.check_extension(false, PU.sign_key)">Check dongle</button>
+          <div id="loginU2F" class="hide">
+            @challenges.map{ ch => 
+              <div class="challenge hide" kh="@ch._1" ch="@ch._2"
+                   hkh="@utils.BaseTool.base64toHex(ch._1)"
+                   hch="@utils.U2F.hashToHex(ch._2)"></div>
+            }
+          </div>
+        </div>
+      }
+      @if(oath && u2f) { <div class="center separator">or</div> }
+      @if(oath) {
+        <div class="jumbotron center">
+          <form method="POST" action="javascript:PU.check_oath()">
+            <label for="oath">Please enter your One Time Password</label>
+            <div id="oathState" class="hide alert alert-error"></div>
+            <div class="input-group otp_wrap">
+              <input type="text" name="oath" id="oath" class="form-control w200"/>
+              <span class="input-group-btn">
+                <button class="btn btn-primary" type="submit">Submit</button>
+              </span>
+            </div>
+          </form>
+        </div>
+      }
+      <div class="center">
+        <button class="btn btn-link" onclick="$('#skip').toggleClass('hide')">
+          Second factor lost ?</button>
+        <div id="skip" class="alert alert-warning hide">
+          It is a demonstration so we are cool about this :) <button class="btn btn-link" onclick="PU.skip_2f()">Click here to skip this step</button>
+        </div>
+      </div>
+    }
+  }
+}

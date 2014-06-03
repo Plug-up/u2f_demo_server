@@ -1,0 +1,43 @@
+@(oath:Boolean, lst:List[U2FDevice])(implicit l:Lang, st:AuthState)
+
+@main("devices"){
+
+  @if(oath){
+    <div class="alert alert-info">
+      You have an OATH key associated with your account
+      - <a href="/oathRegister">Delete it and register a new OATH key</a>
+    </div>
+  } else {
+    <div class="alert alert-info">
+      You have no OATH key associated with your account
+      - <a href="/oathRegister">Register a OATH key</a>
+    </div>
+  }
+
+  <div class="alert alert-info">
+    You have @lst.length registered device(s)
+    - <a href="/deviceRegister">Register a U2F device</a>
+  </div>
+
+  <table class="table">
+    <thead><tr>
+        <th>Date added</th>
+        <th>Matched certificate</th>
+        <th>Auth counter</th>
+        <th></th>
+    </tr></thead>
+    <tbody>
+      @lst.map{d =>
+        <tr id="@d._id">
+          <td>@utils.Utils.format(d.date)</td>
+          <td>@d.cert.getOrElse("")</td>
+          <td>@d.counter.map(_.toString).getOrElse("")</td>
+          <td><a href="javascript:void(0)" onclick="PU.delete_device('@d._id')">
+              <span class="glyphicon glyphicon-trash"></span>
+          </a></td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+}

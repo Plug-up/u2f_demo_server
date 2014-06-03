@@ -1,0 +1,17 @@
+@()(implicit l:Lang, st:AuthState)
+
+@main(""){
+  <h1>Welcome on FIDO U2F Test server</h1>
+
+  <p>This test server was created to demonstrate how easy it is for users to register and connect using FIDO devices.</p>
+
+  <div class="well">
+    <p>You can:</p>
+    <a class="btn btn-primary btn-lg btn-block" href="/login">Log in to an existing account</a>
+    <a class="btn btn-default btn-lg btn-block" href="/register">Register a new account</a>
+  </div>
+
+  <p>This server requires Plug-up <a href="https://chrome.google.com/webstore/detail/mgbemnbocfpecccpecgommbeilnainej" target="_blank">Bridge</a> and <a href="https://chrome.google.com/webstore/detail/icnekhdkfglaecpcdkjoahlnjllocjgo" target="_blank">Content script</a></p>
+  <p>It will also work with the standard gnubbyd extension (remember to modify the manifest.json file to allow your device and this server).</p>
+
+}

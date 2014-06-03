@@ -1,0 +1,19 @@
+@(login:String, priv:String)(implicit l:Lang, st:AuthState)
+
+@main("register"){
+  <h1>OATH key registration</small></h1>
+
+  <div class="jumbotron">
+    <p>Your new OATH key is</p>
+    <p><strong>@priv</strong></p>
+    <p>If you use the Google Authenticator app, you can scan this code:</p>
+    <div id="qrcode" rel="otpauth://totp/@login?secret=@priv.replace(" ", "")&issuer=Plug-up%20U2F%20Test%20server"></div>
+    <p>To validate this new key, please enter a One Time Password generated with it:</p>
+    <div id="oath_state" class="input-group otp_wrap">
+      <input type="text" id="oath_confirm" class="form-control"/>
+      <span class="input-group-btn">
+        <button class="btn btn-primary" onclick="PU.confirm_oath()">Confirm OTP</button>
+      </span>
+    </div>
+  </div>
+}

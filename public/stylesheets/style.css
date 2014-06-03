@@ -1,0 +1,71 @@
+body {
+    padding-top: 60px;
+    font-size: 16px;
+}
+.hide {
+    display: none !important;
+}
+
+.animals {
+    margin: auto;
+    max-width: 630px;
+}
+
+.thumbnail.cutest {
+    background-color: #DFF0D8;
+    border-color: #008000;
+}
+
+.jumbotron, .separator {
+    margin-bottom: 20px;
+}
+
+.jumbotron.success {
+    background-color: #DFF0D8;
+    border-color: #D6E9C6;
+    color: #3C763D;
+}
+
+.jumbotron.warning {
+    background-color: #FCF8E3;
+    border-color: #FAEBCC;
+    color: #8A6D3B;
+}
+
+.center {
+    text-align: center;
+}
+
+.well {
+    font-size: 18px;
+    margin: 40px auto 20px;
+    text-align: center;
+    width: 500px;
+}
+
+.thumbnail {
+    text-align: center;
+}
+
+.thumbnail .caption {
+    display: block;
+    font-size: 13px;
+    padding: 3px 0 0;
+}
+
+.thumbnail .caption input {
+    display: none;
+}
+
+#qrcode {
+    margin: 10px 0;
+}
+
+#qrcode img {
+    margin: auto;
+}
+
+.otp_wrap {
+    width: 200px;
+    margin: 15px auto 0;
+}
