@@ -152,21 +152,14 @@ object U2FCtr extends Controller {
 
   def getRegisterResponse(r: Request[AnyContent]) = {
     val data = Ajax.getData(r)
-    val browserData = data("browserData")
-    val pup = data("impl") == "plugup"
-    val decodedBrowserData =
-      if (pup) browserData
-      else Utils.bytesToString(Base64.decode(browserData))
-    val enrollData = data("enrollData")
-    val decodedEnrollData =
-      if (pup) Utils.hexToBytes(enrollData)
-      else Base64.decode(enrollData)
+    val browserData = data("clientData")
+    val decodedBrowserData = Utils.bytesToString(Base64.decode(browserData))
+    val enrollData = data("registrationData")
+    val decodedEnrollData = Base64.decode(enrollData)
     val appId = gs.HOST()
     val appHash = U2F.hashStringData(appId)
     val challenge = data("challenge")
-    val chHash =
-      if (pup) Utils.hexToBytes(challenge)
-      else U2F.hashStringData(decodedBrowserData)
+    val chHash = U2F.hashStringData(decodedBrowserData)
 
     RegisterResponse(
       data("version"), appId, appHash,
@@ -262,25 +255,16 @@ object U2FCtr extends Controller {
 
   def getSignResponse(r: Request[AnyContent]) = {
     val data = Ajax.getData(r)
-    val pup = data("impl") == "plugup"
-    val browserData = data("browserData")
-    val decodedBrowserData =
-      if (pup) browserData
-      else Utils.bytesToString(Base64.decode(browserData))
+    val browserData = data("clientData")
+    val decodedBrowserData = Utils.bytesToString(Base64.decode(browserData))
     val signData = data("signatureData")
-    val decodedSignData =
-      if (pup) Utils.hexToBytes(signData)
-      else Base64.decode(signData)
+    val decodedSignData = Base64.decode(signData)
     val appId = gs.HOST()
     val appHash = U2F.hashStringData(appId)
     val challenge = data("challenge")
-    val chHash =
-      if (pup) Utils.hexToBytes(challenge)
-      else U2F.hashStringData(decodedBrowserData)
+    val chHash = U2F.hashStringData(decodedBrowserData)
     val keyHandle = data("keyHandle")
-    val b64kh =
-      if (pup) Base64.encode(Utils.hexToBytes(keyHandle))
-      else keyHandle
+    val b64kh = keyHandle
     SignResponse(
       data("version"), appId, appHash,
       data("sessionId"), b64kh,

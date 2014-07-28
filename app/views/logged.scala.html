@@ -27,7 +27,6 @@
       @if(u2f) {
         <div id="u2fState" class="jumbotron center">
           <h1>Please plug your U2F device to access your account</h1>
-          <button class="btn btn-primary" onclick="PU.check_extension(false, PU.sign_key)">Check dongle</button>
           <div id="loginU2F" class="hide">
             @challenges.map{ ch => 
               <div class="challenge hide" kh="@ch._1" ch="@ch._2"

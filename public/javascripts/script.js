@@ -26,6 +26,8 @@ var terminalFactory, currentCard
      */
     if (typeof window.PU !== typeof undef) return;
 
+    window.U2FImpl = PreReleaseImpl;
+
     /**
      * Perso Srv main module
      */
@@ -60,7 +62,7 @@ var terminalFactory, currentCard
         };
 
         var check_extension = function(show, cb){
-            var impls = [PlugupU2FImpl, GnubbyU2FImpl]
+            var impls = [PreReleaseImpl]
             var fails = 0
             if (show){
                 $("#ext0").addClass("hide")
@@ -69,8 +71,6 @@ var terminalFactory, currentCard
             function process(impl){
                 impl.checkExtension(function(res){
                     if (res) {
-                        console.log(impl.name + " OK")
-                        window.U2FImpl = impl
                         if (show) {
                             $("#ext1").addClass("hide")
                             $("#ext2").removeClass("hide")
@@ -104,15 +104,16 @@ var terminalFactory, currentCard
 
         var check_register = function(challenge){
             return function(response) {
-                // console.log("Received response")
-                // console.dir(response)
-
-                if (response.code == U2F.OK) {
+                console.log("Received response")
+                console.dir(response)
+                var errorCode = U2F.OK
+                if (response.errorCode) errorCode = response.errorCode;
+                if (errorCode == U2F.OK) {
                     // U2F device registered
                     $("#regStatus .alert").addClass("hide")
                     $("#reg3").removeClass("hide")
-                    var data = response.responseData
-                    data.impl = U2FImpl.name
+                    var data = response
+                    if (data.responseData) data = data.responseData
                     ajax("checkRegister", data, function(res){
                         if (res.ok) {
                             $("#regStatus .alert").addClass("hide")
@@ -122,17 +123,9 @@ var terminalFactory, currentCard
                         } else alert(res.error)
                     })
                 } else {
-                    if (response.code == U2F.NO_DEVICE) {
-                        // No device found
-                        $("#regStatus .alert").addClass("hide")
-                        $("#reg1").removeClass("hide")
-                    } else if (response.code == U2F.WAIT_TOUCH) {
-                        // User action required
-                        $("#regStatus .alert").addClass("hide")
-                        $("#reg2").removeClass("hide")
-                    } else {
-                        console.log("Unexpected response status: " + response.code)
-                    }
+                    // No device found
+                    $("#regStatus .alert").addClass("hide")
+                    $("#reg1").removeClass("hide")
                     setTimeout(function(){
                         register_internal(false, challenge)
                     }, 500)
@@ -141,15 +134,15 @@ var terminalFactory, currentCard
         }
 
         var register_internal = function(first, challenge) {
-            U2FImpl.sendEnroll(challenge, check_register(challenge))
+            var timeout = 10 // seconds
+            if (first) timeout = 2
+            U2FImpl.sendEnroll(challenge, check_register(challenge), timeout)
         }
 
         var register_key = function() {
             console.log("register_key")
             ajax("genChallenge", {}, function(res){
-                if (res.ok && U2FImpl.name == "plugup")
-                    register_internal(true, res.ok.challengeHash)
-                else if (res.ok) register_internal(true, res.ok.challenge)
+                if (res.ok) register_internal(true, res.ok.challenge)
                 else alert(res.error)
             })
         }
@@ -163,24 +156,16 @@ var terminalFactory, currentCard
         var check_sign = function(response) {
             console.log("Received response")
             console.dir(response)
-            if (response.code == U2F.OK) {
-                var data = response.responseData
-                data.impl = U2FImpl.name
+            var errorCode = U2F.OK
+            if (response.errorCode) errorCode = response.errorCode;
+            if (errorCode == U2F.OK) {
+                var data = response
                 ajax("checkSign", data, function(res){
                     if (res.ok) window.location = "/"
                     else console.error(res.error)
                 })
             } else {
-                console.log("Response status: " + response.code)
-                if (response.code == U2F.NO_DEVICE) {
-                    changeU2FState("", "Please plug your U2F device to access your account")
-                } else if (response.code == U2F.WAIT_TOUCH) {
-                    changeU2FState("", "Please activate your device")
-                } else if (response.code == U2F.NONE_PLUGGED_ENROLLED) {
-                    changeU2FState("error", "Incorrect U2F device(s)")
-                } else {
-                    console.log("Unexpected response status!")
-                }
+                console.log("Response status: " + errorCode)
                 setTimeout(function(){sign_key(false)}, 500)
             }
         }
@@ -189,10 +174,6 @@ var terminalFactory, currentCard
             console.log("sign_key")
             var challenges = []
             var f1 = "ch", f2 = "kh"
-            if (U2FImpl.name == "plugup") {
-                f1 = "hch"
-                f2 = "hkh"
-            }
             $("#loginU2F > *").each(
                 function(i,e){
                     challenges.push({
@@ -201,7 +182,9 @@ var terminalFactory, currentCard
                     })
                 }
             );
-            U2FImpl.sendSign(challenges, check_sign)
+            var timeout = 10 // seconds
+            if (first) timeout = 2
+            U2FImpl.sendSign(challenges, check_sign, timeout)
         }
 
         var skip_2f = function() {
@@ -274,12 +257,12 @@ $(document).ready(function() {
             $(evt.target).closest(".thumbnail").addClass("cutest")
         })
     });
-    // if (U2F.autostart && $('#extStatus').length > 0) {
-    //     PU.check_extension()
-    // }
-    // if (U2F.autostart && $('#loginU2F').length > 0) {
-    //     PU.sign_key(true)
-    // }
+    if ($('#extStatus').length > 0) {
+        PU.check_extension(true, PU.register_key)
+    }
+    if ($('#loginU2F').length > 0) {
+        PU.sign_key(true)
+    }
     if ($('#qrcode').length > 0) { PU.load_qrcode() }
 
 })
