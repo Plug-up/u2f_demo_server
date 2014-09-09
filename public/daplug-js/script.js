@@ -33,6 +33,7 @@
         }
 
         var configure = function(keyStr){
+            $("#configuring").removeClass("hide")
             var hotpVer = 0x02
             console.log(keyStr)
             var hotpKey = new ByteString(keyStr, HEX)
@@ -40,13 +41,15 @@
             var kbFile = 0x0800
             var kbLen = 64
             function err() {
-                $("err").removeClass("hide")
+                $("#configuring").addClass("hide")
+                $("#err").removeClass("hide")
             }
             function activate(){
                 console.debug("Activating dongle")
                 dongle.useAsKeyboard(function(){
                     dongle.setKeyboardAtBoot(true)(function(){
                         console.debug("Dongle configured !")
+                        $("#configuring").addClass("hide")
                         $("#validate").removeClass("hide");
                         PU.initKbListener("oathConfirm")
                         dongle.reset(function(){})

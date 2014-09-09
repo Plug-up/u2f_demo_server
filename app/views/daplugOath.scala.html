@@ -7,8 +7,9 @@
     <p>Please plug the Daplug dongle to configure</p>
     <p><button class="btn btn-primary btn-huge" onclick="DP.configure('@priv')">Configure dongle</button></p>
     <p id="err" class="hide">Dongle configuration failed, please unplug it, plug it back and try again. This may happen if first keyset has been changed or the card has not enough options.</p>
-    <p id="validate" class="hide">Validating dongle, please don not touch your keyboard during validation.</p>
-    <p id="codeError" class="hide"></p>
+    <p id="configuring" class="hide">Configuring dongle, please wait...</p>
+    <p id="validate" class="hide">Validating dongle, please do not touch your keyboard during validation.</p>
+    <p id="oathState" class="hide"></p>
   </div>
   <script src="/assets/daplug-js/plugup.min.js"></script>
   <script src="/assets/daplug-js/DES.js"></script>
