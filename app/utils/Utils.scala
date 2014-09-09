@@ -139,8 +139,10 @@ object BaseTool {
   def toBase(number:BigInt, base:String) = {
     val mult = base.length
     def aux(sub:BigInt, res:String):String = {
-      if (sub == BigInt(0)) res
-      else aux(sub/mult,  base((sub % mult).toInt) + res)
+      if (sub == BigInt(0)) {
+        if (res.length % 2 == 0) res
+        else "0" + res
+      } else aux(sub/mult,  base((sub % mult).toInt) + res)
     }
     aux(number, "")
   }

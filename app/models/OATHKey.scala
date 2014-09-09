@@ -47,6 +47,7 @@ object OATHKeyDb {
   private def col: JSONCollection = play.modules.reactivemongo.ReactiveMongoPlugin.db.collection[JSONCollection]("oath")
 
   def insert(k:OATHKey) = col.insert(k)
+  def update(k:OATHKey) = col.update(Json.obj("_id" -> k._id), k)
 
   def find(id:String) = {
     val res = col.find(Json.obj("_id" -> id)).one[OATHKey]

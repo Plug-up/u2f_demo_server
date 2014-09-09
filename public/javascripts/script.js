@@ -255,6 +255,7 @@ $(document).ready(function() {
             var parentForm = $(evt.target).closest("form")
             parentForm.find(".cutest").removeClass("cutest")
             $(evt.target).closest(".thumbnail").addClass("cutest")
+            $("form").submit()
         })
     });
     if ($('#extStatus').length > 0) {
