@@ -229,12 +229,48 @@ var terminalFactory, currentCard
             ajax("echo", {data:data}, function(){})
         }
 
+        var kbPrefix = "lll"
+        var kbSuffix = "vvv"
+        var cBuffer = ""
+        var decode = function(raw){
+            var res = "", i = 1
+            while (i < raw.length){
+                res += "bcdefghijk".indexOf(raw[i])
+                i += 2
+            }
+            return res
+        }
+
+        var initKbListener = function(endpoint){
+            $(document).keydown(function(e){
+                var chr = "abcdefghijklmnopqrstuvwxyz"
+                if (e.keyCode > 64 && e.keyCode < 90) {
+                    cBuffer += chr[e.keyCode-65]
+                    if (cBuffer.indexOf(kbPrefix)>=0 && cBuffer.indexOf(kbSuffix) > 0) {
+                        var rawCode = cBuffer.split(kbPrefix)[1].split(kbSuffix)[0]
+                        cBuffer = ""
+                        console.log("RAW code: "+rawCode)
+                        var code = decode(rawCode)
+                        console.log("code: "+code)
+                        ajax(endpoint, {otp:code}, function(res){
+                            if (res.ok) window.location = "/"
+                            else if (res.error) {
+                                $("#validate").addClass("hide")
+                                $("#codeError").html(res.error).removeClass("hide")
+                            }
+                        })
+                    }
+                }
+            })
+        }
+
         return {
             check_extension : check_extension,
             check_oath      : check_oath,
             confirm_oath    : confirm_oath,
             delete_device   : delete_device,
             echo            : echo,
+            initKbListener  : initKbListener,
             load_qrcode     : load_qrcode,
             register_key    : register_key,
             sign_key        : sign_key,
@@ -265,5 +301,8 @@ $(document).ready(function() {
         PU.sign_key(true)
     }
     if ($('#qrcode').length > 0) { PU.load_qrcode() }
+    if ($('#oathState').length > 0) {
+        PU.initKbListener("oathCheck")
+    }
 
 })

@@ -38,7 +38,19 @@ object OATHCtr extends Controller {
       case None => Some("No OATH key for this account")
       case Some(k) => {
         if (active && !k.active) Some("OATH key not activated")
-        else if (OATH.totp(otp, k)) None
+        else if (k.kind == "totp" && OATH.totp(otp, k)) {
+          if (!k.active) OATHKeyDb.activate(uid)
+          None
+        } else if (k.kind == "hotp") {
+          OATH.hotp(otp, k) match {
+            case None => Some("Invalid One Time Password")
+            case Some(cpt) => {
+              if (!k.active) OATHKeyDb.activate(uid)
+              OATHKeyDb.setCounter(uid, cpt)
+              None
+            }
+          }
+        }
         else Some("Invalid One Time Password")
       }
     }
@@ -48,10 +60,7 @@ object OATHCtr extends Controller {
     Ajax.JSONerr("offline"), Ajax.JSONerr("Second factor pending")
   ){ implicit r => st => {
     doCheckOath(st.uid, r, false) match {
-      case None => {
-        OATHKeyDb.activate(st.uid)
-        Ajax.JSONok("success")
-      }
+      case None => Ajax.JSONok("success")
       case Some(msg) => {
         println(msg)
         Ajax.JSONerr(msg)
@@ -64,13 +73,13 @@ object OATHCtr extends Controller {
       var err = ""
       AuthController.UpdateAuthState{
         case Unlogged() => Unlogged()
-        case Logged(uid, Pending(true, u2f, challenges)) => {
+        case Logged(uid, Pending(Some(mode), u2f, challenges)) => {
           doCheckOath(uid, r, true) match {
             case None => Logged(uid, OATHSuccess())
             case Some(msg) => {
               println(msg)
               err = msg
-              Logged(uid, Pending(true, u2f, challenges))
+              Logged(uid, Pending(Some(mode), u2f, challenges))
             }
           }
         }
@@ -88,12 +97,7 @@ object OATHCtr extends Controller {
 
   def register() = AuthController.GetAuthState {
     implicit r => implicit st => st match {
-      case Unlogged() => {
-        if (false) {
-          val priv = OATH.genPrivateKey()
-          Ok(views.html.oathRegister("toto", priv))
-        } else Redirect("/")
-      }
+      case Unlogged() => Redirect("/")
       case Logged(uid, u2f) =>
         User.find(uid) match {
           case None => Redirect("/") // Should not happen
@@ -110,6 +114,34 @@ object OATHCtr extends Controller {
                 Ok(views.html.oathRegister(u.login, priv))
               }
             }
+        }
+    }
+  }
+
+  def daplugOath() = AuthController.GetAuthState {
+    implicit r => implicit st => st match {
+      case Unlogged() => {
+        if (false) {
+          val priv = OATH.genPrivateKey()
+          val privHex = BaseTool.base32toHex(priv)
+          implicit val st = Unlogged()
+          Ok(views.html.daplugOath(privHex))
+        } else {
+          Redirect("/")
+        }
+      }
+      case Logged(uid, u2f) =>
+        u2f match {
+          case Pending(_, _, _) => Redirect("/")
+          case _ => {
+            if(OATHKeyDb.find(uid).isDefined) {
+              OATHKeyDb.remove(uid)
+            }
+            val priv = OATH.genPrivateKey()
+            val privHex = BaseTool.base32toHex(priv)
+            OATHKeyDb.insert(OATHKey(uid, privHex, 6, "hotp", -1))
+            Ok(views.html.daplugOath(privHex))
+          }
         }
     }
   }

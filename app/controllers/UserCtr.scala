@@ -43,9 +43,11 @@ object UserCtr extends Controller {
       checkLogin(login, pass) match {
         case Some(u) => {
           val devices = U2FDevice.findByOwner(u._id)
-          val oathKey = OATHKeyDb.find(u._id).map(_.active).getOrElse(false)
+          val oathKey = OATHKeyDb.find(u._id).flatMap(
+            k => { if (k.active) Some(k.kind) else None }
+          )
           val secondFactor =
-            if (devices.isEmpty && !oathKey) No2F()
+            if (devices.isEmpty && oathKey.isEmpty) No2F()
             else {
               Pending(
                 oathKey, !devices.isEmpty,
@@ -72,18 +74,21 @@ object UserCtr extends Controller {
   def createAccount = Action {
     implicit request => {
       val (login, pass) = loginForm.bindFromRequest.get
-      User.findLogin(login) match {
-        case None => {
-          val uid = Utils.genID(32)
-          val u = User(uid, login, pass)
-          User.insert(u)
-          AuthController.UpdateAuthState(_ => Logged(uid, No2F())){
-            _ => Redirect("/deviceRegister")
+      if (login == "") {
+        Ok(views.html.register(login, "The name cannot be empty !"))
+      } else {
+        User.findLogin(login) match {
+          case None => {
+            val uid = Utils.genID(32)
+            val u = User(uid, login, pass)
+            User.insert(u)
+            AuthController.UpdateAuthState(_ => Logged(uid, No2F())){
+              _ => Redirect("/deviceRegister")
+            }
           }
-        }
-        case Some(u) => {
-          implicit val st = Unlogged()
-          Ok(views.html.register(login, "This name is already used !"))
+          case Some(u) => {
+            Ok(views.html.register(login, "This name is already used !"))
+          }
         }
       }
     }

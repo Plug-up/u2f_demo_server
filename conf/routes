@@ -15,6 +15,7 @@ GET    /register                    controllers.UserCtr.register
 POST   /register                    controllers.UserCtr.createAccount
 GET    /deviceRegister              controllers.U2FCtr.deviceRegister
 GET    /oathRegister                controllers.OATHCtr.register
+GET    /daplugOath                  controllers.OATHCtr.daplugOath
 
 # Ajax routes
 POST   /ajax/echo                   controllers.Ajax.echo
