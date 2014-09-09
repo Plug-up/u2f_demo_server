@@ -301,7 +301,7 @@ $(document).ready(function() {
         PU.sign_key(true)
     }
     if ($('#qrcode').length > 0) { PU.load_qrcode() }
-    if ($('#oathState').length > 0) {
+    if ($('#hotp_conf').length > 0) {
         PU.initKbListener("oathCheck")
     }
 
