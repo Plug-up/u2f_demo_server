@@ -52,11 +52,11 @@ object OATH {
   }
 
   private def compute(secret:Array[Byte], counter:Long, digits:Int) = {
-    val hexCount = Utils.hexToBytes("%X".format(counter))
-    val padding = Utils.hexToBytes("0000000000000000")
-    val paddedCount = padding.slice(0, hexCount.length) ++ hexCount
-
-    truncate(digits, hmacSha1(secret, paddedCount))
+    val strCount = "00000000000000000%X".format(counter).takeRight(16)
+    val hexCount = Utils.hexToBytes(strCount)
+    val res = truncate(digits, hmacSha1(secret, hexCount))
+    println(strCount + ": " + res)
+    res
   }
 
   /**

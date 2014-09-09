@@ -1,4 +1,4 @@
-@(login:String, msg:String)(implicit l:Lang, st:AuthState)
+@(login:String, msg:String)(implicit l:Lang, st:AuthState=Unlogged())
 
 @main("register"){
   <h1>Account registration <small>Account information</small></h1>
@@ -19,9 +19,5 @@
       </div>
     </div>
 
-    <div class="form-group">
-      <button type="submit" class="btn btn-primary">Create account</button>
-      <button type="reset" class="btn btn-default">Cancel</button>
-    </div>
   </form>
 }

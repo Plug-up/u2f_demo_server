@@ -16,7 +16,7 @@ case class Skipped() extends SecondFactor // Second factor skipped
 
 /* Multiple auth possible */
 case class Pending(
-  oath       : Boolean,
+  oath       : Option[String],
   u2f        : Boolean,
   challenges : List[(String, String)] // List (keyHandle, challenge) for u2F
 ) extends SecondFactor
