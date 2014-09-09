@@ -256,7 +256,7 @@ var terminalFactory, currentCard
                             if (res.ok) window.location = "/"
                             else if (res.error) {
                                 $("#validate").addClass("hide")
-                                $("#codeError").html(res.error).removeClass("hide")
+                                $("#oathState").html(res.error).removeClass("hide")
                             }
                         })
                     }
