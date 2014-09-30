@@ -21,6 +21,7 @@ package utils
 
 import java.util.Date
 import java.text.SimpleDateFormat
+import play.api.Logger
 
 case class RegisterResponse(
   version     : String,
@@ -84,7 +85,7 @@ object U2F {
   def log(text:String) {
     val date = new Date()
     val f = new SimpleDateFormat("dd/MM/yy HH:mm:ss.SSS")
-    println(f.format(date) + " > "  + text)
+    Logger.debug(f.format(date) + " > "  + text)
   }
 
   def genChallenge() = Utils.genID(64)

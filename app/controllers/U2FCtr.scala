@@ -83,7 +83,7 @@ object U2FCtr extends Controller {
   }
 
   def doCheckRegister(uid:String, r: RegisterResponse) = {
-    log("Checking registration data")
+    log("Checking registration data for "+uid)
 
     log("BrowserData: " + r.browserData)
     log("EnrollData: " + Utils.bytesToHex(r.enrollData))
@@ -194,7 +194,7 @@ object U2FCtr extends Controller {
   }
 
   def doCheckSign(uid:String, r: SignResponse, challenges:List[(String, String)]) = {
-    log("Checking signature data")
+    log("Checking signature data for "+uid)
 
     log("BrowserData: " + r.browserData)
     log("SignData: " + Utils.bytesToHex(r.signature))
