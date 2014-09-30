@@ -42,7 +42,8 @@ package object gs {
   var DEV = false
 
   def HOST() = {
-    if (DEV) "http://192.168.5.14:9000"
+    // Note: Current Chrome extension 0.8.63 REQUIRES a URL that seems legit so you have to modifiy your host file to add a legit path to your test computer
+    if (DEV) "http://ulysse.plug-up.com:9000"
     else "http://u2f.plug-up.net"
   }
 

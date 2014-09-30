@@ -19,6 +19,9 @@
 
 package utils
 
+import java.util.Date
+import java.text.SimpleDateFormat
+
 case class RegisterResponse(
   version     : String,
   appId       : String,
@@ -78,6 +81,12 @@ object U2F {
   import org.bouncycastle.jce.spec.ECParameterSpec
   import org.bouncycastle.jce.spec.ECPublicKeySpec
 
+  def log(text:String) {
+    val date = new Date()
+    val f = new SimpleDateFormat("dd/MM/yy HH:mm:ss.SSS")
+    println(f.format(date) + " > "  + text)
+  }
+
   def genChallenge() = Utils.genID(64)
 
   var trustedCertificates: Array[(String, PublicKey)] = Array()
@@ -105,7 +114,7 @@ object U2F {
       MessageDigest.getInstance("SHA-256").digest(data.getBytes);
     } catch {
       case _ : Throwable => {
-        println("Cannot compute SHA-256")
+        // println("Cannot compute SHA-256")
         Array[Byte]()
       }
     }
@@ -136,14 +145,14 @@ object U2F {
   def checkAttestCrt(src:Array[Byte]):Option[String] = {
     def testCertificate(pub:(String, PublicKey), crt:X509Certificate) = {
       try {
-        println("Testing against cert: " + pub._1)
+        log("Testing against cert: " + pub._1)
         crt.verify(pub._2)
-        println("Success")
+        log("Success")
         Some(pub._1)
       } catch {
         case e : Throwable => {
-          println("Fail")
-          println(e)
+          log("Fail")
+          log(e.toString)
           None:Option[String]
         }
       }
@@ -154,8 +163,8 @@ object U2F {
       CertificateFactory.getInstance("X.509").generateCertificates(str)
       .toArray.foldLeft(None:Option[String]){
         (res, cert) => {
-          println("Chercking certificate:")
-          println(cert)
+          log("Chercking certificate:")
+          log(cert.toString)
           if (res.isDefined) res
           else cert match {
             case crt: X509Certificate => {
@@ -167,7 +176,7 @@ object U2F {
               }
             }
             case _ => {
-              println("Unrecognized certificate")
+              log("Unrecognized certificate")
               res
             }     
           }
@@ -185,8 +194,8 @@ object U2F {
       CertificateFactory.getInstance("X.509").generateCertificates(fis)
       .toArray.foreach{
         case crt: X509Certificate => {
-          println("X509 certificate added: " + name)
-          println(crt)
+          // println("X509 certificate added: " + name)
+          // println(crt)
           trustedCertificates = trustedCertificates :+ (name, crt.getPublicKey)
         }
         case _ => println("Error adding x509 certificate: " + name)
@@ -196,7 +205,6 @@ object U2F {
       "plugup-fidoarca.pem"
     ).foreach(sub(_))
     println("%d trusted certificates imported".format(trustedCertificates.length))
-
   }
 
 }

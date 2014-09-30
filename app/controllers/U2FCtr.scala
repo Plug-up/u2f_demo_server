@@ -30,11 +30,13 @@ import models._
 
 object U2FCtr extends Controller {
 
+  def log(text:String) { U2F.log(text) }
+
   // Set to false to ignore challenge errors
   def CHECK_CHALLENGE = true
 
   // Set to false to allow untrusted certificates
-  def CHECK_CERTIFICATE = true
+  def CHECK_CERTIFICATE = false
 
   // Set to false to disable counter check
   def CHECK_COUNTER = true
@@ -81,10 +83,10 @@ object U2FCtr extends Controller {
   }
 
   def doCheckRegister(uid:String, r: RegisterResponse) = {
-    println("Checking registration data")
+    log("Checking registration data")
 
-    println("BrowserData: " + r.browserData)
-    println("EnrollData: " + Utils.bytesToHex(r.enrollData))
+    log("BrowserData: " + r.browserData)
+    log("EnrollData: " + Utils.bytesToHex(r.enrollData))
 
     if (Utils.byte2Int(r.enrollData(0)) != 5) {
       RegisterFailure("Error registering device: invalid first byte (RFU)")
@@ -92,10 +94,10 @@ object U2FCtr extends Controller {
       RegisterFailure("Error registering device: invalid second byte (version)")
     } else {
       val publicPoint = r.enrollData.slice(1, 66)
-      println("User public point: " + Utils.bytesToHex(publicPoint))
+      log("User public point: " + Utils.bytesToHex(publicPoint))
       val khLength = java.lang.Byte.valueOf(r.enrollData(66))
       val keyHandle = r.enrollData.slice(67, 67+khLength)
-      println("User key handle: " + Utils.bytesToHex(keyHandle))
+      log("User key handle: " + Utils.bytesToHex(keyHandle))
       val certOffset = 67+khLength
       val mode = Utils.byte2Int(r.enrollData(certOffset+1))
       val (certSize, sizeLen):(Int, Int) =
@@ -105,13 +107,13 @@ object U2FCtr extends Controller {
           (0x0100 * Utils.byte2Int(r.enrollData(2+certOffset)) + Utils.byte2Int(r.enrollData(3+certOffset)), 3)
         } else (mode, 1);
       val attestCert = r.enrollData.slice(certOffset, certOffset + certSize + sizeLen + 1)
-      println("Attestation certificate: " + Utils.bytesToHex(attestCert))
+      log("Attestation certificate: " + Utils.bytesToHex(attestCert))
       val certCheck = U2F.checkAttestCrt(attestCert)
       if (certCheck.isEmpty && CHECK_CERTIFICATE) {
         RegisterFailure("Certitifcate is not trusted")
       } else {
-        if (certCheck.isEmpty) println("Certitifcate is not trusted but error ignored")
-        else println("Trusted certificate")
+        if (certCheck.isEmpty) log("Certitifcate is not trusted but error ignored")
+        else log("Trusted certificate")
         val sigOffset = certOffset + certSize + sizeLen + 1
         val sigLen = Utils.byte2Int(r.enrollData(sigOffset + 1))
         val signature = r.enrollData.slice(sigOffset, sigOffset + sigLen + 2)
@@ -125,8 +127,8 @@ object U2FCtr extends Controller {
         } else {
           val finalIdx = (OIDIndex + OIDLookup.length) / 2
           val attestPublic = U2F.getPublicKey(attestCert).get
-          println("Attestation public: " + Utils.bytesToHex(attestPublic))
-          println("Challenge " + r.challenge)
+          log("Attestation public: " + Utils.bytesToHex(attestPublic))
+          log("Challenge " + r.challenge)
           // TODO: check challenge
 
           val dataToSign = Array(
@@ -134,11 +136,11 @@ object U2FCtr extends Controller {
             r.appHash, r.chHash,
             keyHandle, publicPoint
           ).flatten
-          println("AttestPub: "+Utils.bytesToHex(attestPublic))
-          println("Data to sign: "+Utils.bytesToHex(dataToSign))
-          println("Signature: "+Utils.bytesToHex(signature))
+          log("AttestPub: "+Utils.bytesToHex(attestPublic))
+          log("Data to sign: "+Utils.bytesToHex(dataToSign))
+          log("Signature: "+Utils.bytesToHex(signature))
           if (U2F.verifySignature(attestPublic, dataToSign, signature)) {
-            println("Everything is OK !")
+            log("Everything is OK !")
             cleanChallenges(uid)
             RegisterSuccess(
               Base64.encode(keyHandle), Utils.bytesToHex(publicPoint),
@@ -174,7 +176,7 @@ object U2FCtr extends Controller {
       case Logged(uid, _) => {
         doCheckRegister(uid, getRegisterResponse(r)) match {
           case RegisterFailure(msg) => 
-            println(msg)
+            log(msg)
           Ajax.JSONerr(msg)
           case RegisterSuccess(kh, pp, k, crt) => {
             val device = U2FDevice(
@@ -192,22 +194,21 @@ object U2FCtr extends Controller {
   }
 
   def doCheckSign(uid:String, r: SignResponse, challenges:List[(String, String)]) = {
-    println("Checking signature data")
+    log("Checking signature data")
 
-    println("BrowserData: " + r.browserData)
-    println("SignData: " + Utils.bytesToHex(r.signature))
+    log("BrowserData: " + r.browserData)
+    log("SignData: " + Utils.bytesToHex(r.signature))
 
     val flag = r.signature(0)
     val counter = r.signature.slice(1, 5)
     val counterVal = java.lang.Long.parseLong(Utils.bytesToHex(counter), 16)
     
-    println("counter: " + Utils.bytesToHex(counter))
-    println("Counter: " + counterVal.toString)
+    log("Counter: " + Utils.bytesToHex(counter) + "("+ counterVal.toString +")")
     val signatureSize = Utils.byte2Int(r.signature(6))
     val signature = r.signature.slice(5, 7 + signatureSize)
-    println("Signature : " + Utils.bytesToHex(signature))
+    log("Signature: " + Utils.bytesToHex(signature))
 
-    println("Key handle: " + Utils.bytesToHex(Base64.decode(r.keyHandle)))
+    log("Key handle: " + Utils.bytesToHex(Base64.decode(r.keyHandle)))
 
     def searchPublicPoint() = {
       U2FDevice.findByOwnerAndKH(uid, r.keyHandle) match {
@@ -222,12 +223,12 @@ object U2FCtr extends Controller {
               r.appHash, Array(flag),
               counter, r.chHash
             ).flatten
-            println("Pt: "+Utils.bytesToHex(pt))
-            println("Data to sign: "+Utils.bytesToHex(dataToSign))
-            println("Signature: "+Utils.bytesToHex(signature))
+            log("Public pt: "+Utils.bytesToHex(pt))
+            log("Data to sign: "+Utils.bytesToHex(dataToSign))
+            log("Signature: "+Utils.bytesToHex(signature))
             val res = U2F.verifySignature(pt, dataToSign, signature)
             if (res) {
-              println("Sign success !")
+              log("Sign success !")
               U2FDevice.setCounter(d._id, counterVal)
               SignSuccess()
             } else SignFailure("Invalid signature")
@@ -243,7 +244,7 @@ object U2FCtr extends Controller {
         else searchPublicPoint()
       }
       case Some((kh, challenge)) => {
-        println(challenge)
+        log(challenge)
         val challHash = U2F.hashToHex(challenge)
         // Note: the hash is checked only for Plug-up extension
         if (r.browserData.indexOf(challenge) >= 0 || r.browserData.indexOf(challHash) >= 0) searchPublicPoint()
@@ -282,7 +283,7 @@ object U2FCtr extends Controller {
           doCheckSign(uid, getSignResponse(r), challenges) match {
             case SignSuccess() => Logged(uid, U2FSuccess())
             case SignFailure(msg) => {
-              println(msg)
+              log(msg)
               err = msg
               Logged(uid, Pending(oath, true, challenges))
             }
