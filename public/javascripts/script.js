@@ -53,9 +53,6 @@ var terminalFactory, currentCard
                 url: "/ajax/"+url,
                 data: data,
                 success: function(res) {
-                    if (res.error) {
-                        $("#container").html('<div class="jumbotron alert alert-danger"><h1>'+res.error+'</h1></div>')
-                    }
                     if (typeof callback !== typeof undef) callback(res)
                 }
             });
@@ -162,7 +159,7 @@ var terminalFactory, currentCard
                 var data = response
                 ajax("checkSign", data, function(res){
                     if (res.ok) window.location = "/"
-                    else console.error(res.error)
+                    else alert(res.error)
                 })
             } else {
                 console.log("Response status: " + errorCode)

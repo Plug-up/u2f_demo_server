@@ -189,23 +189,24 @@ object U2F {
   }
 
   def loadCertificates() = {
+    import java.io.File
     Security.addProvider(new BouncyCastleProvider());
     def sub(name:String) {
       val fis = new FileInputStream("trusted/"+name)
       CertificateFactory.getInstance("X.509").generateCertificates(fis)
       .toArray.foreach{
         case crt: X509Certificate => {
-          // println("X509 certificate added: " + name)
+          log("X509 certificate added: " + name)
           // println(crt)
           trustedCertificates = trustedCertificates :+ (name, crt.getPublicKey)
         }
         case _ => println("Error adding x509 certificate: " + name)
       }
     }
-    List(
-      "plugup-fidoarca.pem"
-    ).foreach(sub(_))
-    println("%d trusted certificates imported".format(trustedCertificates.length))
+    val folder = new File("trusted")
+    folder.listFiles.filter(!_.isDirectory)
+    .map(_.getName).toList.foreach(sub(_))
+    log("%d provider certificates imported".format(trustedCertificates.length))
   }
 
 }
