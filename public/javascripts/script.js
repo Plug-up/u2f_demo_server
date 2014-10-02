@@ -163,6 +163,11 @@ var terminalFactory, currentCard
                 })
             } else {
                 console.log("Response status: " + errorCode)
+                if (errorCode == U2F.DEVICE_INELIGIBLE) {
+                    $("#u2fState h1").html("Incorrect dongle")
+                } else {
+                    $("#u2fState h1").html("Please plug your U2F device to access your account.")
+                }
                 setTimeout(function(){sign_key(false)}, 500)
             }
         }
