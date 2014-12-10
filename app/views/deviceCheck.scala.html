@@ -1,0 +1,17 @@
+@()(implicit l:Lang, st:AuthState)
+
+@main("check"){
+  <h1>U2F device check</small></h1>
+  <p>You need to install <a href="https://chrome.google.com/webstore/detail/fido-u2f-universal-2nd-fa/pfboblefjcgdjicmnffhdgionmgcdmne" target="_blank">FIDO U2F (Universal 2nd Factor) extension</a> and Chrome 38 to check your device.</p>
+  <div class="progress">
+    <div id="check_progress" class="progress-bar progress-bar-success">
+      <span class="sr-only">U2F check progress</span>
+    </div>
+  </div>
+  <div id="check_state" class="center alert alert-info"><button class="btn btn-primary" onclick="PU.check_dongle()">Start device verification</button></div>
+  <table class="table">
+    <tr><td>Checking extension</td><td id="ext_check"></td></tr>
+    <tr><td>Registering device</td><td id="reg_check"></td></tr>
+    <tr><td>Signing with device</td><td id="sig_check"></td></tr>
+  </table>
+}

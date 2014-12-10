@@ -10,6 +10,8 @@ GET    /                            controllers.Application.index
 GET    /devices                     controllers.Application.devices
 GET    /delete                      controllers.Application.deleteAccount
 
+GET    /check                       controllers.U2FCtr.checkDevice
+
 # Registration routes
 GET    /register                    controllers.UserCtr.register
 POST   /register                    controllers.UserCtr.createAccount
@@ -26,6 +28,11 @@ POST   /ajax/checkSign              controllers.U2FCtr.checkSign
 POST   /ajax/skip2f                 controllers.Application.skip2f
 POST   /ajax/oathConfirm            controllers.OATHCtr.confirm
 POST   /ajax/oathCheck              controllers.OATHCtr.check
+
+#Device check
+POST   /ajax/getCheckChallenge      controllers.U2FCtr.getCheckChallenge
+POST   /ajax/checkRegister2         controllers.U2FCtr.checkRegister2
+POST   /ajax/checkSign2             controllers.U2FCtr.checkSign2
 
 # Authentication routes
 GET    /login                       controllers.Application.loginPage

@@ -90,6 +90,117 @@ var terminalFactory, currentCard
             $(impls).each(function(i, impl){process(impl)})
         }
 
+        var check_dongle = function(){
+            var SPINNER = '<img src="/assets/images/spinner.gif" alt="Checking"/>'
+            var SUCCESS = '<img src="/assets/images/tick.png" alt="Success"/>'
+            var ERROR = '<img src="/assets/images/error.png" alt="Error"/>'
+            var impl = PreReleaseImpl
+            function progress(pc, cl, txt){
+                $("#check_progress").css({width:pc+"%"})
+                $("#check_state").html("<p>"+txt+"</p>")
+                    .attr("class", "center alert alert-"+cl)
+            }
+            function checkSign(enrollData, res){
+                progress(70, "info", "Checking device signature")
+                var data = enrollData
+                data.clientData = res.clientData
+                data.signatureData = res.signatureData
+                ajax("checkSign2", data, function(res){
+                    if (res.ok) {
+                        $("#sig_check").html(SUCCESS)
+                        progress(100, "success", res.ok)
+                    } else {
+                        $("#sig_check").html(ERROR)
+                        progress(100, "danger", res.error)
+                    }
+                })
+            }
+            function sign(enrollData, tries){
+                return function(res){
+                    // console.dir(res)
+                    var errorCode = U2F.OK
+                    if (res.errorCode) errorCode = res.errorCode
+                    if (errorCode == U2F.OK) {
+                        console.log('Received answer')
+                        console.dir(res)
+                        checkSign(enrollData, res)
+                    } else if (tries > 5) {
+                        $("#sig_check").html(ERROR)
+                        progress(70, "danger", "No device answer after 15 seconds")
+                    } else {
+                        console.log("Sign try "+tries)
+                        var challenge = [{
+                            challenge: enrollData.challenge,
+                            keyHandle: enrollData.keyHandle
+                        }]
+                        U2FImpl.sendSign(challenge, sign(enrollData, tries+1), 2)
+                    }
+                }
+            }
+            function checkEnroll(challenge, res) {
+                if (res.challenge != challenge) {
+                    console.log(res.challenge)
+                    console.log(challenge)
+                    $("#reg_check").html(ERROR)
+                    progress(20, "danger", "Server challenge tampered")
+                } else {
+                    progress(30, "info", "Device answer received - Checking answer")
+                    ajax("checkRegister2", res, function(res){
+                        if (res.ok) {
+                            $("#reg_check").html(SUCCESS)
+                            progress(60, "info", "Please plug or activate your device" )
+                            $("#sig_check").html(SPINNER)
+                            sign(res.ok, 0)({errorCode:-1})
+                        } else {
+                            $("#reg_check").html(ERROR)
+                            progress(60, "danger", "Cannot authenticate device")
+                        }
+                    })
+                }
+            }
+            function enroll(challenge, tries){
+                return function(res){
+                    var errorCode = U2F.OK
+                    if (res.errorCode) errorCode = res.errorCode
+                    if (errorCode == U2F.OK) {
+                        console.log("Received answer")
+                        console.dir(res)
+                        checkEnroll(challenge, res)
+                    } else if (tries > 5) {
+                        $("#reg_check").html(ERROR)
+                        progress(15, "danger", "No device answer after 15 seconds")
+                    } else {
+                        console.log("Enroll try "+tries)
+                        var timeout = 2 // seconds
+                        if (tries == 0) timeout = 5
+                        impl.sendEnroll(challenge, enroll(challenge, tries+1), timeout)
+                    }
+                }
+            }
+            function get_challenge(){
+                ajax("getCheckChallenge", {}, function(res){
+                    progress(15, "info", "Please plug or activate your device")
+                    $("#reg_check").html(SPINNER)
+                    enroll(res.challenge, 0)({errorCode:-1})
+                })
+            }
+            function check_ext(){
+                progress(0, "info", "Checking extension")
+                $("#ext_check").html(SPINNER)
+                impl.checkExtension(function(res){
+                    if (res) {
+                        $("#ext_check").html(SUCCESS)
+                        progress(10, "info", "Extension detected")
+                        get_challenge()
+                    } else {
+                        $("#ext_check").html(ERROR)
+                        progress(10, "error", "No extension detected")
+                    }
+                })
+            }
+            check_ext()
+        }
+
         var genChallenge = function() {
             var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
             var length = 64
@@ -267,6 +378,7 @@ var terminalFactory, currentCard
         }
 
         return {
+            check_dongle    : check_dongle,
             check_extension : check_extension,
             check_oath      : check_oath,
             confirm_oath    : confirm_oath,

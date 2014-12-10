@@ -27,7 +27,7 @@
         @st match {
           case Unlogged() => {
               <ul class="nav navbar-nav">
-                @List("", "login", "register").map{ m =>
+                @List("", "login", "register", "check").map{ m =>
                   <li @if(cur == m){ class="active" } >
                     <a href="/@m">@Messages("menu."+m)</a>
                   </li>
@@ -36,7 +36,7 @@
           }
           case Logged(_, _) => {
               <ul class="nav navbar-nav">
-                @List("", "devices", "delete").map{ m =>
+                @List("", "devices", "check").map{ m =>
                   <li @if(cur == m){ class="active" } >
                     <a href="/@m">@Messages("menu."+m)</a>
                   </li>
@@ -64,9 +64,7 @@
       U2F.hashedAppId = '@utils.U2F.hashToHex(gs.HOST())'
       U2F.appId = '@gs.HOST()'
     </script>
-    <!-- Pre-Relese Extension implementation -->
     <script src="/assets/javascripts/impl.js"></script>
-    <!-- file common to both impls -->
     <script src="/assets/javascripts/script.js"></script>
   </body>
 </html>

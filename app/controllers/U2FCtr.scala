@@ -82,6 +82,12 @@ object U2FCtr extends Controller {
     }
   }
 
+  def checkDevice = AuthController.GetAuthState {
+    implicit r => implicit st => {
+      Ok(views.html.deviceCheck())
+    }
+  }
+
   def doCheckRegister(uid:String, r: RegisterResponse) = {
     log("Checking registration data for "+uid)
 
@@ -193,7 +199,7 @@ object U2FCtr extends Controller {
     }
   }
 
-  def doCheckSign(uid:String, r: SignResponse, challenges:List[(String, String)]) = {
+  def doCheckSign(uid:String, r: SignResponse, d:U2FDevice, challenges:List[(String, String)]) = {
     log("Checking signature data for "+uid)
 
     log("BrowserData: " + r.browserData)
@@ -210,30 +216,25 @@ object U2FCtr extends Controller {
 
     log("Key handle: " + Utils.bytesToHex(Base64.decode(r.keyHandle)))
 
-    def searchPublicPoint() = {
-      U2FDevice.findByOwnerAndKH(uid, r.keyHandle) match {
-        case None => SignFailure("Unknow device")
-        case Some(d) => {
-          if (d.counter.isDefined && d.counter.get >= counterVal && CHECK_COUNTER)
-            SignFailure("Invalid counter !")
-          else {
-            val pt = Utils.hexToBytes(d.public)
+    def checkPublicPoint() = {
+      if (d.counter.isDefined && d.counter.get >= counterVal && CHECK_COUNTER)
+        SignFailure("Invalid counter !")
+      else {
+        val pt = Utils.hexToBytes(d.public)
 
-            val dataToSign = Array[Array[Byte]](
-              r.appHash, Array(flag),
-              counter, r.chHash
-            ).flatten
-            log("Public pt: "+Utils.bytesToHex(pt))
-            log("Data to sign: "+Utils.bytesToHex(dataToSign))
-            log("Signature: "+Utils.bytesToHex(signature))
-            val res = U2F.verifySignature(pt, dataToSign, signature)
-            if (res) {
-              log("Sign success !")
-              U2FDevice.setCounter(d._id, counterVal)
-              SignSuccess()
-            } else SignFailure("Invalid signature")
-          }
-        }
+        val dataToSign = Array[Array[Byte]](
+          r.appHash, Array(flag),
+          counter, r.chHash
+        ).flatten
+        log("Public pt: "+Utils.bytesToHex(pt))
+        log("Data to sign: "+Utils.bytesToHex(dataToSign))
+        log("Signature: "+Utils.bytesToHex(signature))
+        val res = U2F.verifySignature(pt, dataToSign, signature)
+        if (res) {
+          log("Sign success !")
+          U2FDevice.setCounter(d._id, counterVal)
+          SignSuccess()
+        } else SignFailure("Invalid signature")
       }
     }
 
@@ -241,15 +242,15 @@ object U2FCtr extends Controller {
       case None => {
         if (CHECK_CHALLENGE)
           SignFailure("No challenge generated for this device !")
-        else searchPublicPoint()
+        else checkPublicPoint()
       }
       case Some((kh, challenge)) => {
         log(challenge)
         val challHash = U2F.hashToHex(challenge)
         // Note: the hash is checked only for Plug-up extension
-        if (r.browserData.indexOf(challenge) >= 0 || r.browserData.indexOf(challHash) >= 0) searchPublicPoint()
+        if (r.browserData.indexOf(challenge) >= 0 || r.browserData.indexOf(challHash) >= 0) checkPublicPoint()
         else if (CHECK_CHALLENGE) SignFailure("Challenge tampered !")
-        else searchPublicPoint()
+        else checkPublicPoint()
       }
     }
   }
@@ -280,12 +281,19 @@ object U2FCtr extends Controller {
       AuthController.UpdateAuthState{
         case Unlogged() => Unlogged()
         case Logged(uid, Pending(oath, true, challenges)) => {
-          doCheckSign(uid, getSignResponse(r), challenges) match {
-            case SignSuccess() => Logged(uid, U2FSuccess())
-            case SignFailure(msg) => {
-              log(msg)
-              err = msg
-              Logged(uid, Pending(oath, true, challenges))
+          def onError(msg:String) = {
+            log(msg)
+            err = msg
+            Logged(uid, Pending(oath, true, challenges))
+          }
+          val signResponse = getSignResponse(r)
+          U2FDevice.findByOwnerAndKH(uid, signResponse.keyHandle) match {
+            case None => onError("Unknow device")
+            case Some(d) => {
+              doCheckSign(uid, signResponse, d, challenges) match {
+                case SignSuccess() => Logged(uid, U2FSuccess())
+                case SignFailure(msg) => onError(msg)
+              }
             }
           }
         }
@@ -314,6 +322,69 @@ object U2FCtr extends Controller {
             Ajax.JSONok("ok")
           }
         }
+    }
+  }
+
+  /* Routes for device checker */
+
+  def getCheckChallenge = Action {
+    implicit r =>  {
+      Ok(Json.obj( "challenge" -> U2F.genChallenge() ))
+    }
+  }
+
+  def checkRegister2 = Action {
+    implicit r => {
+      doCheckRegister("", getRegisterResponse(r)) match {
+        case RegisterFailure(msg) => {
+          log(msg)
+          Ajax.JSONerr(msg)
+        }
+        case RegisterSuccess(kh, pp, k, crt) => {
+          /*
+          val device = U2FDevice(
+            Utils.genID(64),
+            new java.util.Date(), uid,
+            kh, pp, k, crt
+          )
+          */
+          Ok(Json.obj(
+            "ok" -> Json.obj(
+              "keyHandle" -> kh,
+              "pubPoint" -> pp,
+              "kind" -> k,
+              "cert" -> crt,
+              "challenge" -> U2F.genChallenge()
+            )
+          ))
+        }
+      }
+    }
+  }
+
+  def checkSign2 = Action {
+    implicit r => {
+      val data = Ajax.getData(r)
+      val signResponse = getSignResponse(r)
+      val checkDevice = U2FDevice(
+        "", new java.util.Date(), "",
+        data("keyHandle"),
+        data("pubPoint"),
+        data("kind"),
+        Some(data("cert"))
+      )
+      val challenges = List(
+        (data("keyHandle"), data("challenge"))
+      )
+      doCheckSign("", signResponse, checkDevice, challenges) match {
+        case SignSuccess() =>
+          val msg = data("cert") match {
+            case "plugup-fidoCA.pem" => "Your device is a genuine Plug-up dongle"
+            case _ => "Your device is an unknown U2F dongle"
+          }
+          Ajax.JSONok(msg)
+        case SignFailure(msg) => Ajax.JSONerr(msg)
+      }
     }
   }
 
