@@ -146,14 +146,13 @@ object U2F {
   def checkAttestCrt(src:Array[Byte]):Option[String] = {
     def testCertificate(pub:(String, PublicKey), crt:X509Certificate) = {
       try {
-        log("Testing against cert: " + pub._1)
         crt.verify(pub._2)
-        log("Success")
+        log("Certificate match: "+pub._1)
         Some(pub._1)
       } catch {
         case e : Throwable => {
-          log("Fail")
-          log(e.toString)
+          // log("Fail")
+          // log(e.toString)
           None:Option[String]
         }
       }
@@ -164,7 +163,7 @@ object U2F {
       CertificateFactory.getInstance("X.509").generateCertificates(str)
       .toArray.foldLeft(None:Option[String]){
         (res, cert) => {
-          log("Chercking certificate:")
+          log("Checking certificate:")
           log(cert.toString)
           if (res.isDefined) res
           else cert match {

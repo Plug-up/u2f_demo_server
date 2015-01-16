@@ -117,7 +117,13 @@ var terminalFactory, currentCard
             }
             function sign(enrollData, tries){
                 return function(res){
-                    // console.dir(res)
+                    if (tries > 0) {
+                        console.log("Sig response:")
+                        console.dir(res)
+                    } else {
+                        console.log("enrollData:")
+                        console.dir(enrollData)
+                    }
                     var errorCode = U2F.OK
                     if (res.errorCode) errorCode = res.errorCode
                     if (errorCode == U2F.OK) {
@@ -129,10 +135,10 @@ var terminalFactory, currentCard
                         progress(70, "danger", "No device answer after 15 seconds")
                     } else {
                         console.log("Sign try "+tries)
-                        var challenge = [{
-                            challenge: enrollData.challenge,
-                            keyHandle: enrollData.keyHandle
-                        }]
+                        var challenge = [
+                            { challenge: enrollData.challenge,
+                              keyHandle: enrollData.keyHandle }
+                        ]
                         U2FImpl.sendSign(challenge, sign(enrollData, tries+1), 2)
                     }
                 }

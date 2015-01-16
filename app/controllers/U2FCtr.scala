@@ -209,7 +209,7 @@ object U2FCtr extends Controller {
     val counter = r.signature.slice(1, 5)
     val counterVal = java.lang.Long.parseLong(Utils.bytesToHex(counter), 16)
     
-    log("Counter: " + Utils.bytesToHex(counter) + "("+ counterVal.toString +")")
+    log("Counter: 0x" + Utils.bytesToHex(counter) + " ( "+ counterVal.toString +")")
     val signatureSize = Utils.byte2Int(r.signature(6))
     val signature = r.signature.slice(5, 7 + signatureSize)
     log("Signature: " + Utils.bytesToHex(signature))
