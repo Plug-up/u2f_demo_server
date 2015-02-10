@@ -27,7 +27,7 @@
         @st match {
           case Unlogged() => {
               <ul class="nav navbar-nav">
-                @List("", "login", "register", "check").map{ m =>
+                @List("", "login", "register", "check", "signature").map{ m =>
                   <li @if(cur == m){ class="active" } >
                     <a href="/@m">@Messages("menu."+m)</a>
                   </li>
@@ -36,7 +36,7 @@
           }
           case Logged(_, _) => {
               <ul class="nav navbar-nav">
-                @List("", "devices", "check").map{ m =>
+                @List("", "devices", "check", "signature").map{ m =>
                   <li @if(cur == m){ class="active" } >
                     <a href="/@m">@Messages("menu."+m)</a>
                   </li>
@@ -61,10 +61,8 @@
     <script src="/assets/javascripts/u2fCommon.js"></script>
     <script src="chrome-extension://pfboblefjcgdjicmnffhdgionmgcdmne/u2f-api.js"></script>
     <script type="text/javascript">
-      U2F.hashedAppId = '@utils.U2F.hashToHex(gs.HOST())'
       U2F.appId = '@gs.HOST()'
     </script>
-    <script src="/assets/javascripts/impl.js"></script>
     <script src="/assets/javascripts/script.js"></script>
   </body>
 </html>

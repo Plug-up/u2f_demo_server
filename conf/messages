@@ -4,10 +4,11 @@ date.short = MM/ss/yyyy
 date.long  = MM/dd/yyyy - HH:mm
 
 
-menu.         = Home
-menu.login    = Log in
-menu.register = Account registration
-menu.devices  = Manage devices
-menu.password = Change password
-menu.check    = Check device
-menu.delete   = Delete account
+menu.          = Home
+menu.login     = Log in
+menu.register  = Account registration
+menu.devices   = Manage devices
+menu.password  = Change password
+menu.check     = Check device
+menu.delete    = Delete account
+menu.signature = Signature

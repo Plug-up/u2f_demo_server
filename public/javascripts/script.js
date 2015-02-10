@@ -26,26 +26,10 @@ var terminalFactory, currentCard
      */
     if (typeof window.PU !== typeof undef) return;
 
-    window.U2FImpl = PreReleaseImpl;
-
     /**
      * Perso Srv main module
      */
     var PU = function() {
-
-        function post_redir(url, fields) {
-            var form_str = '<form action="' + url + '" method="POST">';
-            for (var i = 0; i < fields.length; i++) {
-                form_str = form_str
-                    + '<input type="hidden" name="'
-                    + fields[i].name +'" value="'
-                    + fields[i].val + '" />'
-            }
-            form_str = form_str + '</form>'
-            var form = $(form_str);
-            $('body').append(form);
-            $(form).submit();
-        }
 
         var ajax = function(url, data, callback) {
             $.ajax({
@@ -58,43 +42,27 @@ var terminalFactory, currentCard
             });
         };
 
-        var check_extension = function(show, cb){
-            var impls = [PreReleaseImpl]
-            var fails = 0
-            if (show){
-                $("#ext0").addClass("hide")
-                $("#ext1").removeClass("hide")
+        var check_compat = function(show, cb){
+            if (typeof u2f !== "undefined") {
+                if (show) {
+                    $("#ext1").addClass("hide")
+                    $("#ext2").removeClass("hide")
+                    $("#regCol").removeClass("hide")
+                    $("#reg1").removeClass("hide")
+                }
+                cb(true)
+            } else {
+                if (show) {
+                    $("#ext1").addClass("hide")
+                    $("#ext3").removeClass("hide")
+                } else alert("Browser not compatible")
             }
-            function process(impl){
-                impl.checkExtension(function(res){
-                    if (res) {
-                        if (show) {
-                            $("#ext1").addClass("hide")
-                            $("#ext2").removeClass("hide")
-                            $("#regCol").removeClass("hide")
-                            $("#reg1").removeClass("hide")
-                        }
-                        cb(true)
-                    } else {
-                        fails += 1
-                        console.log(impl.name + " KO")
-                    }
-                    if (fails >= impls.length) {
-                        if (show) {
-                            $("#ext1").addClass("hide")
-                            $("#ext3").removeClass("hide")
-                        } else alert("No extension detected")
-                    }
-                })
-            }
-            $(impls).each(function(i, impl){process(impl)})
         }
 
         var check_dongle = function(){
             var SPINNER = '<img src="/assets/images/spinner.gif" alt="Checking"/>'
             var SUCCESS = '<img src="/assets/images/tick.png" alt="Success"/>'
             var ERROR = '<img src="/assets/images/error.png" alt="Error"/>'
-            var impl = PreReleaseImpl
             function progress(pc, cl, txt){
                 $("#check_progress").css({width:pc+"%"})
                 $("#check_state").html("<p>"+txt+"</p>")
@@ -132,14 +100,14 @@ var terminalFactory, currentCard
                         checkSign(enrollData, res)
                     } else if (tries > 5) {
                         $("#sig_check").html(ERROR)
-                        progress(70, "danger", "No device answer after 15 seconds")
+                        progress(70, "danger", "No device answer after 5 tries")
                     } else {
                         console.log("Sign try "+tries)
                         var challenge = [
                             { challenge: enrollData.challenge,
                               keyHandle: enrollData.keyHandle }
                         ]
-                        U2FImpl.sendSign(challenge, sign(enrollData, tries+1), 2)
+                        sign_internal(challenge, sign(enrollData, tries+1))
                     }
                 }
             }
@@ -174,12 +142,10 @@ var terminalFactory, currentCard
                         checkEnroll(challenge, res)
                     } else if (tries > 5) {
                         $("#reg_check").html(ERROR)
-                        progress(15, "danger", "No device answer after 15 seconds")
+                        progress(15, "danger", "No device answer after 5 tries")
                     } else {
                         console.log("Enroll try "+tries)
-                        var timeout = 2 // seconds
-                        if (tries == 0) timeout = 5
-                        impl.sendEnroll(challenge, enroll(challenge, tries+1), timeout)
+                        register_internal(challenge, enroll(challenge, tries+1))
                     }
                 }
             }
@@ -190,21 +156,19 @@ var terminalFactory, currentCard
                     enroll(res.challenge, 0)({errorCode:-1})
                 })
             }
-            function check_ext(){
-                progress(0, "info", "Checking extension")
+            function check_comp(){
+                progress(0, "info", "Checking compatibility")
                 $("#ext_check").html(SPINNER)
-                impl.checkExtension(function(res){
-                    if (res) {
-                        $("#ext_check").html(SUCCESS)
-                        progress(10, "info", "Extension detected")
-                        get_challenge()
-                    } else {
-                        $("#ext_check").html(ERROR)
-                        progress(10, "error", "No extension detected")
-                    }
-                })
+                if (typeof u2f != "undefined") {
+                    $("#ext_check").html(SUCCESS)
+                    progress(10, "info", "Browser compatible")
+                    get_challenge()
+                } else {
+                    $("#ext_check").html(ERROR)
+                    progress(10, "error", "Browser not compatible")
+                }
             }
-            check_ext()
+            check_comp()
         }
 
         var genChallenge = function() {
@@ -241,23 +205,47 @@ var terminalFactory, currentCard
                     $("#regStatus .alert").addClass("hide")
                     $("#reg1").removeClass("hide")
                     setTimeout(function(){
-                        register_internal(false, challenge)
+                        register_internal(challenge, check_register(challenge))
                     }, 500)
                 }
             }
         }
 
-        var register_internal = function(first, challenge) {
-            var timeout = 10 // seconds
-            if (first) timeout = 2
-            U2FImpl.sendEnroll(challenge, check_register(challenge), timeout)
+        var register_internal = function(challenge, cb) {
+            console.log("Sending registration request")
+            var enrollChallenges = [{
+                version   : "U2F_V2",
+                appId     : U2F.appId,
+                challenge : challenge
+            }]
+            console.dir(enrollChallenges)
+            u2f.register(enrollChallenges, [], cb, 2)
+        }
+
+        var sign_internal = function(challenges, cb) {
+            console.log("Sending sign request")
+            var signData = []
+            $(challenges).each(
+                function(i,e){
+                    signData.push({
+                        version   : "U2F_V2",
+                        appId     : U2F.appId,
+                        challenge : e.challenge,
+                        keyHandle : e.keyHandle
+                    })
+                }
+            );
+            console.dir(signData)
+            u2f.sign(signData, cb, 2)
         }
 
         var register_key = function() {
             console.log("register_key")
             ajax("genChallenge", {}, function(res){
-                if (res.ok) register_internal(true, res.ok.challenge)
-                else alert(res.error)
+                if (res.ok) {
+                    var ch = res.ok.challenge
+                    register_internal(ch, check_register(ch))
+                } else alert(res.error)
             })
         }
 
@@ -273,8 +261,7 @@ var terminalFactory, currentCard
             var errorCode = U2F.OK
             if (response.errorCode) errorCode = response.errorCode;
             if (errorCode == U2F.OK) {
-                var data = response
-                ajax("checkSign", data, function(res){
+                ajax("checkSign", response, function(res){
                     if (res.ok) window.location = "/"
                     else alert(res.error)
                 })
@@ -301,9 +288,7 @@ var terminalFactory, currentCard
                     })
                 }
             );
-            var timeout = 10 // seconds
-            if (first) timeout = 2
-            U2FImpl.sendSign(challenges, check_sign, timeout)
+            sign_internal(challenges, check_sign)
         }
 
         var skip_2f = function() {
@@ -383,9 +368,113 @@ var terminalFactory, currentCard
             })
         }
 
+        function computeSha256(cb, errcb) {
+            var self = this
+            var files = document.getElementById("sig_file").files
+            if (files.length == 0) errcb()
+            else {
+                var file = files[0]
+
+                var reader = new FileReader()
+
+                reader.onload = function(e) {
+                    var cont = e.target.result
+                    var uint8 = new Uint8Array(cont)
+                    var msg = Crypto.util.bytesToWords(uint8)
+                    var bits = file.size * 8;
+                    var bitsH = Math.floor(bits / 0x100000000);
+                    var bitsL = bits & 0xFFFFFFFF;
+                    // Padding
+                    msg[bits >>> 5] |= 0x80 << (24 - bits % 32);
+                    msg[((bits + 64 >>> 9) << 4) + 14] = bitsH;
+                    msg[((bits + 64 >>> 9) << 4) + 15] = bitsL;
+                    var sha = Crypto.util.bytesToHex(sha256(msg))
+                    cb(sha)
+                }
+                reader.readAsArrayBuffer(file)
+            }
+        }
+
+        var sign_file = function(kh){
+            var check_file_sign = function(ch){return function(res){
+                var errorCode = U2F.OK
+                if (res.errorCode) errorCode = res.errorCode;
+                if (errorCode == U2F.OK) {
+                    console.dir(res)
+                    $("#sig1").val(res.clientData)
+                    $("#sig2").val(res.signatureData)
+                    $("#sigblock").val(ch[0].challenge+"\n"+res.clientData+"\n"+res.signatureData+"\n"+$("#pubpt").val())
+                    $("#sigblocknopp").val(ch[0].challenge+"\n"+res.clientData+"\n"+res.signatureData)
+                } else {
+                    console.log("Response status: " + errorCode)
+                    if (errorCode == U2F.DEVICE_INELIGIBLE) {
+                        $("#sig_help").html("Incorrect dongle")
+                    } else {
+                        $("#sig_help").html("Please plug your U2F device to access your account.")
+                    }
+                    setTimeout(function(){
+                        sign_internal(ch, check_file_sign(ch))
+                    }, 500)
+                }
+            }}
+            computeSha256(function(sha){
+                $("#sha256").val(sha)
+                var challenges = [{
+                    challenge: sha,
+                    keyHandle: kh
+                }]
+                sign_internal(challenges, check_file_sign(challenges))
+            }, function(){
+                $("#sig_help").html("Please select a file")
+            })
+        }
+
+        var split_block = function(pp){
+            var id = "#sigblocknopp"
+            if (pp) id = "#sigblock"
+            var data = $(id).val().split("\n")
+            $("#sha256").val(data[0])
+            $("#sig1").val(data[1])
+            $("#sig2").val(data[2])
+            if(pp) $("#pubpt").val(data[3])
+        }
+
+        var check_file_sign = function(kh){
+            var SPINNER = '<img src="/assets/images/spinner.gif" alt="Checking"/>'
+            var SUCCESS = '<img src="/assets/images/tick.png" alt="Success"/>'
+            var ERROR = '<img src="/assets/images/error.png" alt="Error"/>'
+            $("#sig_check_res").html(SPINNER)
+            var check_server = function(msg){
+                var data = {
+                    clientData: $("#sig1").val(),
+                    signatureData: $("#sig2").val(),
+                    pubPoint: $("#pubpt").val(),
+                    challenge: $("#sha256").val()
+                }
+                ajax("checkSign2", data, function(res){
+                    console.dir(res)
+                    if (res.ok) {
+                        $("#sig_check_res").html(SUCCESS+msg)
+                    } else {
+                        $("#sig_check_res").html(ERROR+msg)
+                    }
+                })
+            }
+            computeSha256(
+                function(sha){
+                    if (sha != $("#sha256").val()) {
+                        $("#sig_check_res").html(ERROR+" This file has not the right sha256")
+                    } else check_server("")
+                }, function(){
+                    check_server(" No file selected")
+                }
+            )
+        }
+
         return {
             check_dongle    : check_dongle,
-            check_extension : check_extension,
+            check_compat    : check_compat,
+            check_file_sign : check_file_sign,
             check_oath      : check_oath,
             confirm_oath    : confirm_oath,
             delete_device   : delete_device,
@@ -393,8 +482,10 @@ var terminalFactory, currentCard
             initKbListener  : initKbListener,
             load_qrcode     : load_qrcode,
             register_key    : register_key,
+            sign_file       : sign_file,
             sign_key        : sign_key,
-            skip_2f         : skip_2f
+            skip_2f         : skip_2f,
+            split_block     : split_block
         }
 
     }();
@@ -415,7 +506,7 @@ $(document).ready(function() {
         })
     });
     if ($('#extStatus').length > 0) {
-        PU.check_extension(true, PU.register_key)
+        PU.check_compat(true, PU.register_key)
     }
     if ($('#loginU2F').length > 0) {
         PU.sign_key(true)

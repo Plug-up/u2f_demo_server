@@ -10,6 +10,7 @@ GET    /                            controllers.Application.index
 GET    /devices                     controllers.Application.devices
 GET    /delete                      controllers.Application.deleteAccount
 
+GET    /signature                   controllers.U2FCtr.signature
 GET    /check                       controllers.U2FCtr.checkDevice
 
 # Registration routes

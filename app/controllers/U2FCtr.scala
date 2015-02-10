@@ -30,7 +30,7 @@ import models._
 
 object U2FCtr extends Controller {
 
-  def log(text:String) { U2F.log(text) }
+  def log(text:String) = Logger.debug(text)
 
   // Set to false to ignore challenge errors
   def CHECK_CHALLENGE = true
@@ -82,109 +82,17 @@ object U2FCtr extends Controller {
     }
   }
 
-  def checkDevice = AuthController.GetAuthState {
-    implicit r => implicit st => {
-      Ok(views.html.deviceCheck())
-    }
-  }
-
-  def doCheckRegister(uid:String, r: RegisterResponse) = {
-    log("Checking registration data for "+uid)
-
-    log("BrowserData: " + r.browserData)
-    log("EnrollData: " + Utils.bytesToHex(r.enrollData))
-
-    if (Utils.byte2Int(r.enrollData(0)) != 5) {
-      RegisterFailure("Error registering device: invalid first byte (RFU)")
-    } else if (Utils.byte2Int(r.enrollData(1)) != 4) {
-      RegisterFailure("Error registering device: invalid second byte (version)")
-    } else {
-      val publicPoint = r.enrollData.slice(1, 66)
-      log("User public point: " + Utils.bytesToHex(publicPoint))
-      val khLength = java.lang.Byte.valueOf(r.enrollData(66))
-      val keyHandle = r.enrollData.slice(67, 67+khLength)
-      log("User key handle: " + Utils.bytesToHex(keyHandle))
-      val certOffset = 67+khLength
-      val mode = Utils.byte2Int(r.enrollData(certOffset+1))
-      val (certSize, sizeLen):(Int, Int) =
-        if (mode == 0x81) {
-          (Utils.byte2Int(r.enrollData(2+certOffset)), 2)
-        } else if (mode == 0x82) {
-          (0x0100 * Utils.byte2Int(r.enrollData(2+certOffset)) + Utils.byte2Int(r.enrollData(3+certOffset)), 3)
-        } else (mode, 1);
-      val attestCert = r.enrollData.slice(certOffset, certOffset + certSize + sizeLen + 1)
-      log("Attestation certificate: " + Utils.bytesToHex(attestCert))
-      val certCheck = U2F.checkAttestCrt(attestCert)
-      if (certCheck.isEmpty && CHECK_CERTIFICATE) {
-        RegisterFailure("Certitifcate is not trusted")
-      } else {
-        if (certCheck.isEmpty) log("Certitifcate is not trusted but error ignored")
-        else log("Trusted certificate")
-        val sigOffset = certOffset + certSize + sizeLen + 1
-        val sigLen = Utils.byte2Int(r.enrollData(sigOffset + 1))
-        val signature = r.enrollData.slice(sigOffset, sigOffset + sigLen + 2)
-
-        val attestCertHex = Utils.bytesToHex(attestCert)
-        // Quick hack, look for ECPublicKey / Prime256v1 OIDs and start of sequence
-        val OIDLookup = "06072A8648CE3D020106082A8648CE3D030107034200"
-        val OIDIndex = attestCertHex.indexOf(OIDLookup)
-        if (OIDIndex < 0) {
-          RegisterFailure("Error registering device: Certificate error (OIDs not found)")
-        } else {
-          val finalIdx = (OIDIndex + OIDLookup.length) / 2
-          val attestPublic = U2F.getPublicKey(attestCert).get
-          log("Attestation public: " + Utils.bytesToHex(attestPublic))
-          log("Challenge " + r.challenge)
-          // TODO: check challenge
-
-          val dataToSign = Array(
-            Array(0.toByte),
-            r.appHash, r.chHash,
-            keyHandle, publicPoint
-          ).flatten
-          log("AttestPub: "+Utils.bytesToHex(attestPublic))
-          log("Data to sign: "+Utils.bytesToHex(dataToSign))
-          log("Signature: "+Utils.bytesToHex(signature))
-          if (U2F.verifySignature(attestPublic, dataToSign, signature)) {
-            log("Everything is OK !")
-            cleanChallenges(uid)
-            RegisterSuccess(
-              Base64.encode(keyHandle), Utils.bytesToHex(publicPoint),
-              "SHA256withECDSA", certCheck
-            )
-          } else RegisterFailure("Error registering device (invalid signature)")
-        }
-      }
-    }
-  }
-
-  def getRegisterResponse(r: Request[AnyContent]) = {
-    val data = Ajax.getData(r)
-    val browserData = data("clientData")
-    val decodedBrowserData = Utils.bytesToString(Base64.decode(browserData))
-    val enrollData = data("registrationData")
-    val decodedEnrollData = Base64.decode(enrollData)
-    val appId = gs.HOST()
-    val appHash = U2F.hashStringData(appId)
-    val challenge = data("challenge")
-    val chHash = U2F.hashStringData(decodedBrowserData)
-
-    RegisterResponse(
-      data("version"), appId, appHash,
-      data("sessionId"), challenge,
-      decodedBrowserData, chHash,
-      decodedEnrollData
-    )
-  }
-
   def checkRegister = AuthController.GetAuthState {
     implicit r => {
       case Logged(uid, _) => {
-        doCheckRegister(uid, getRegisterResponse(r)) match {
-          case RegisterFailure(msg) => 
+        U2F.checkRegister(uid, r, challenges.get(uid)) match {
+          case RegisterFailure(msg) => {
+            cleanChallenges(uid)
             log(msg)
-          Ajax.JSONerr(msg)
+            Ajax.JSONerr(msg)
+          }
           case RegisterSuccess(kh, pp, k, crt) => {
+            cleanChallenges(uid)
             val device = U2FDevice(
               Utils.genID(64),
               new java.util.Date(), uid,
@@ -199,82 +107,6 @@ object U2FCtr extends Controller {
     }
   }
 
-  def doCheckSign(uid:String, r: SignResponse, d:U2FDevice, challenges:List[(String, String)]) = {
-    log("Checking signature data for "+uid)
-
-    log("BrowserData: " + r.browserData)
-    log("SignData: " + Utils.bytesToHex(r.signature))
-
-    val flag = r.signature(0)
-    val counter = r.signature.slice(1, 5)
-    val counterVal = java.lang.Long.parseLong(Utils.bytesToHex(counter), 16)
-    
-    log("Counter: 0x" + Utils.bytesToHex(counter) + " ( "+ counterVal.toString +")")
-    val signatureSize = Utils.byte2Int(r.signature(6))
-    val signature = r.signature.slice(5, 7 + signatureSize)
-    log("Signature: " + Utils.bytesToHex(signature))
-
-    log("Key handle: " + Utils.bytesToHex(Base64.decode(r.keyHandle)))
-
-    def checkPublicPoint() = {
-      if (d.counter.isDefined && d.counter.get >= counterVal && CHECK_COUNTER)
-        SignFailure("Invalid counter !")
-      else {
-        val pt = Utils.hexToBytes(d.public)
-
-        val dataToSign = Array[Array[Byte]](
-          r.appHash, Array(flag),
-          counter, r.chHash
-        ).flatten
-        log("Public pt: "+Utils.bytesToHex(pt))
-        log("Data to sign: "+Utils.bytesToHex(dataToSign))
-        log("Signature: "+Utils.bytesToHex(signature))
-        val res = U2F.verifySignature(pt, dataToSign, signature)
-        if (res) {
-          log("Sign success !")
-          U2FDevice.setCounter(d._id, counterVal)
-          SignSuccess()
-        } else SignFailure("Invalid signature")
-      }
-    }
-
-    challenges.find(_._1 == r.keyHandle) match {
-      case None => {
-        if (CHECK_CHALLENGE)
-          SignFailure("No challenge generated for this device !")
-        else checkPublicPoint()
-      }
-      case Some((kh, challenge)) => {
-        log(challenge)
-        val challHash = U2F.hashToHex(challenge)
-        // Note: the hash is checked only for Plug-up extension
-        if (r.browserData.indexOf(challenge) >= 0 || r.browserData.indexOf(challHash) >= 0) checkPublicPoint()
-        else if (CHECK_CHALLENGE) SignFailure("Challenge tampered !")
-        else checkPublicPoint()
-      }
-    }
-  }
-
-  def getSignResponse(r: Request[AnyContent]) = {
-    val data = Ajax.getData(r)
-    val browserData = data("clientData")
-    val decodedBrowserData = Utils.bytesToString(Base64.decode(browserData))
-    val signData = data("signatureData")
-    val decodedSignData = Base64.decode(signData)
-    val appId = gs.HOST()
-    val appHash = U2F.hashStringData(appId)
-    val challenge = data("challenge")
-    val chHash = U2F.hashStringData(decodedBrowserData)
-    val keyHandle = data("keyHandle")
-    val b64kh = keyHandle
-    SignResponse(
-      data("version"), appId, appHash,
-      data("sessionId"), b64kh,
-      challenge, decodedBrowserData,
-      chHash, decodedSignData
-    )
-  }
-
   def checkSign = Action {
     implicit r => {
       var err = ""
@@ -286,15 +118,10 @@ object U2FCtr extends Controller {
             err = msg
             Logged(uid, Pending(oath, true, challenges))
           }
-          val signResponse = getSignResponse(r)
-          U2FDevice.findByOwnerAndKH(uid, signResponse.keyHandle) match {
-            case None => onError("Unknow device")
-            case Some(d) => {
-              doCheckSign(uid, signResponse, d, challenges) match {
-                case SignSuccess() => Logged(uid, U2FSuccess())
-                case SignFailure(msg) => onError(msg)
-              }
-            }
+          val devices = U2FDevice.findByOwner(uid)
+          U2F.checkSign(uid, r, devices, challenges) match {
+            case SignSuccess(kh) => Logged(uid, U2FSuccess(kh))
+            case SignFailure(msg) => onError(msg)
           }
         }
         case Logged(uid, _) => {
@@ -303,7 +130,7 @@ object U2FCtr extends Controller {
         }
       }{
         case Unlogged() => Ajax.JSONerr("offline")
-        case Logged(_, U2FSuccess()) => Ajax.JSONok("success")
+        case Logged(_, U2FSuccess(_)) => Ajax.JSONok("success")
         case Logged(_, _) => Ajax.JSONerr("Authentication failed (%s)".format(err))
       }(r)
     }
@@ -325,7 +152,28 @@ object U2FCtr extends Controller {
     }
   }
 
+  /* Electronic signing */
+
+  def signature = AuthController.GetAuthState {
+    implicit r => implicit st => st match {
+      case Logged(uid, U2FSuccess(kh)) => {
+        U2FDevice.findByOwnerAndKH(uid, kh) match {
+          case None => Ok(views.html.signature(kh, ""))
+          case Some(k) => Ok(views.html.signature(kh, k.public))
+        }
+      }
+      case _ => Ok(views.html.signature("", ""))
+    }
+  }
+
   /* Routes for device checker */
+
+  def checkDevice = AuthController.GetAuthState {
+    implicit r => implicit st => {
+      Ok(views.html.deviceCheck())
+    }
+  }
+
 
   def getCheckChallenge = Action {
     implicit r =>  {
@@ -335,19 +183,13 @@ object U2FCtr extends Controller {
 
   def checkRegister2 = Action {
     implicit r => {
-      doCheckRegister("", getRegisterResponse(r)) match {
+      val res = U2F.getRegisterResponse(r)
+      U2F.checkRegister("", r, Some(res.challenge)) match {
         case RegisterFailure(msg) => {
           log(msg)
           Ajax.JSONerr(msg)
         }
         case RegisterSuccess(kh, pp, k, crt) => {
-          /*
-          val device = U2FDevice(
-            Utils.genID(64),
-            new java.util.Date(), uid,
-            kh, pp, k, crt
-          )
-          */
           Ok(Json.obj(
             "ok" -> Json.obj(
               "keyHandle" -> kh,
@@ -365,19 +207,18 @@ object U2FCtr extends Controller {
   def checkSign2 = Action {
     implicit r => {
       val data = Ajax.getData(r)
-      val signResponse = getSignResponse(r)
-      val checkDevice = U2FDevice(
+      val fakeDevices = List(U2FDevice(
         "", new java.util.Date(), "",
         data("keyHandle"),
         data("pubPoint"),
         data("kind"),
         Some(data("cert"))
-      )
+      ))
       val challenges = List(
         (data("keyHandle"), data("challenge"))
       )
-      doCheckSign("", signResponse, checkDevice, challenges) match {
-        case SignSuccess() =>
+      U2F.checkSign("", r, fakeDevices, challenges) match {
+        case SignSuccess(_) =>
           val msg = data("cert") match {
             case "plugup-fidoCA.pem" => "Your device is a genuine Plug-up dongle"
             case _ => "Your device is an unknown U2F dongle"

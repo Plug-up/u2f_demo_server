@@ -22,7 +22,9 @@ case class Pending(
 ) extends SecondFactor
 
 /* Success auth states */
-case class U2FSuccess() extends SecondFactor // U2F success
+case class U2FSuccess(
+  keyHandle  : String
+) extends SecondFactor // U2F success
 case class OATHSuccess() extends SecondFactor // OATH success
 
 abstract class AuthState

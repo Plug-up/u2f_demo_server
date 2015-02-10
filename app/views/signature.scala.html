@@ -1,0 +1,76 @@
+@(kh:String, pp:String)(implicit l:Lang, st:AuthState)
+
+@main("signature"){
+  <h1>U2F file signature</h1>
+  <form class="form-horizontal" method="POST"
+    action="javascript:void(0)" onsubmit="PU.sign_file('@kh')">
+    @if(kh == ""){
+      <div class="alert alert-info">
+        You need to be logged in with a U2Fdongle to generate signatures
+      </div>
+    }
+    <div class="form-group">
+      <label class="control-label col-sm-2" for="sig_file">File to sign</label>
+      <div class="col-sm-10">
+        <input class="form-control" type="file" id="sig_file" />
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-10 col-sm-offset-2">
+        <button type="submit" class="btn btn-primary">Sign file</button>
+        <span id="sig_help">You will need to connect your U2F device or push its button</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="control-label col-sm-2" for="keyHandle">KeyHandle</label>
+      <div class="col-sm-10">
+        <input class="form-control" type="text" id="keyHandle" value="@kh" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="control-label col-sm-2" for="pubpt">Public point</label>
+      <div class="col-sm-10">
+        <input class="form-control" type="text" id="pubpt" value="@pp"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="control-label col-sm-2" for="sha256">SHA256</label>
+      <div class="col-sm-10">
+        <input class="form-control" type="text" id="sha256" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="control-label col-sm-2" for="sig1">Signature [1/2]</label>
+      <div class="col-sm-10">
+        <input class="form-control" type="text" id="sig1" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="control-label col-sm-2" for="sig2">Signature [2/2]</label>
+      <div class="col-sm-10">
+        <input class="form-control" type="text" id="sig2" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="control-label col-sm-2" for="sigblock">Full signature</label>
+      <div class="col-sm-10">
+        <textarea class="form-control"id="sigblock" rows="4" onchange="PU.split_block(true)"></textarea>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="control-label col-sm-2" for="sigblocknopp">Full signature (no public point)</label>
+      <div class="col-sm-10">
+        <textarea class="form-control"id="sigblocknopp" rows="4" onchange="PU.split_block(false)"></textarea>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-10 col-sm-offset-2">
+        <button onclick="PU.check_file_sign()"
+                type="button" class="btn btn-primary">
+          Verify signature</button>
+        <span id="sig_check_res"></span>
+      </div>
+    </div>
+  </form>
+  <script src="/assets/javascripts/sha256.js"></script>
+}
