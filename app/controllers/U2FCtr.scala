@@ -217,7 +217,8 @@ object U2FCtr extends Controller {
       val challenges = List(
         (data("keyHandle"), data("challenge"))
       )
-      U2F.checkSign("", r, fakeDevices, challenges) match {
+      val appId = data("appId")
+      U2F.checkSign("", r, fakeDevices, challenges, appId) match {
         case SignSuccess(_) =>
           val msg = data("cert") match {
             case "plugup-fidoCA.pem" => "Your device is a genuine Plug-up dongle"

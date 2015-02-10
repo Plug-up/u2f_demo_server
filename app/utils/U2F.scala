@@ -330,14 +330,14 @@ object U2F {
     (flag, counter, counterVal, signature)
   }
 
-  def getSignResponse(r: Request[AnyContent]) = {
+  def getSignResponse(r: Request[AnyContent], forcedAppId:String) = {
     println(r.body.asJson.toString)
     val data = getData(r)
     val browserData = data("clientData")
     val decodedBrowserData = Utils.bytesToString(Base64.decode(browserData))
     val signData = data("signatureData")
     val decodedSignData = Base64.decode(signData)
-    val appId = gs.HOST()
+    val appId = if (forcedAppId == "") gs.HOST() else forcedAppId
     val appHash = hashStringData(appId)
     val challenge = data("challenge")
     val chHash = hashStringData(decodedBrowserData)
@@ -351,8 +351,8 @@ object U2F {
     )
   }
 
-  def checkSign(uid:String, request: Request[AnyContent], ds:List[U2FDevice], challenges:List[(String, String)]) = {
-    val r = getSignResponse(request)
+  def checkSign(uid:String, request: Request[AnyContent], ds:List[U2FDevice], challenges:List[(String, String)], forcedAppId:String="") = {
+    val r = getSignResponse(request, forcedAppId)
     ds.find(_.keyHandle == r.keyHandle) match {
       case None => SignFailure("Unknonw KeyHandle")
       case Some(d) => {

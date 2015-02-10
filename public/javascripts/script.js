@@ -403,7 +403,7 @@ var terminalFactory, currentCard
                     console.dir(res)
                     $("#sig1").val(res.clientData)
                     $("#sig2").val(res.signatureData)
-                    $("#sigblock").val(ch[0].challenge+"\n"+res.clientData+"\n"+res.signatureData+"\n"+$("#pubpt").val())
+                    $("#sigblock").val(ch[0].challenge+"\n"+res.clientData+"\n"+res.signatureData+"\n"+$("#appid").val()+"\n"+$("#pubpt").val())
                     $("#sigblocknopp").val(ch[0].challenge+"\n"+res.clientData+"\n"+res.signatureData)
                 } else {
                     console.log("Response status: " + errorCode)
@@ -436,7 +436,10 @@ var terminalFactory, currentCard
             $("#sha256").val(data[0])
             $("#sig1").val(data[1])
             $("#sig2").val(data[2])
-            if(pp) $("#pubpt").val(data[3])
+            if(pp) {
+                $("#appid").val(data[3])
+                $("#pubpt").val(data[4])
+            }
         }
 
         var check_file_sign = function(kh){
@@ -446,6 +449,7 @@ var terminalFactory, currentCard
             $("#sig_check_res").html(SPINNER)
             var check_server = function(msg){
                 var data = {
+                    appId: $("#appid").val(),
                     clientData: $("#sig1").val(),
                     signatureData: $("#sig2").val(),
                     pubPoint: $("#pubpt").val(),
