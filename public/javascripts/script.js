@@ -447,7 +447,7 @@ var terminalFactory, currentCard
             var SUCCESS = '<img src="/assets/images/tick.png" alt="Success"/>'
             var ERROR = '<img src="/assets/images/error.png" alt="Error"/>'
             $("#sig_check_res").html(SPINNER)
-            var check_server = function(msg){
+            var check_server = function(okmsg, errmsg){
                 var data = {
                     appId: $("#appid").val(),
                     clientData: $("#sig1").val(),
@@ -458,9 +458,9 @@ var terminalFactory, currentCard
                 ajax("checkSign2", data, function(res){
                     console.dir(res)
                     if (res.ok) {
-                        $("#sig_check_res").html(SUCCESS+msg)
+                        $("#sig_check_res").html('<div class="alert alert-success">'+SUCCESS+okmsg+"</div>")
                     } else {
-                        $("#sig_check_res").html(ERROR+msg)
+                        $("#sig_check_res").html(ERROR+errmsg)
                     }
                 })
             }
@@ -468,9 +468,9 @@ var terminalFactory, currentCard
                 function(sha){
                     if (sha != $("#sha256").val()) {
                         $("#sig_check_res").html(ERROR+" This file has not the right sha256")
-                    } else check_server("")
+                    } else check_server("Signature is correct", "Incorrect signature")
                 }, function(){
-                    check_server(" No file selected")
+                    check_server(" No file selected", " Incorrect signature")
                 }
             )
         }
